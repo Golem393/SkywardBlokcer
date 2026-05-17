@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">SkywardBlocker</string>
+    <string name="accessibility_description">Enforces device compliance policies by monitoring and restricting unauthorized application usage.</string>
+</resources>
