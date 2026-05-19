@@ -10,8 +10,8 @@ android {
         applicationId = "com.example.skywardblocker"
         minSdk = 24
         targetSdk = 36
-        versionCode = 7
-        versionName = "1.6"
+        versionCode = 11
+        versionName = "1.10"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

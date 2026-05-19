@@ -1,6 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.example.skywardblocker">
 
+    <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
+
     <application
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
@@ -29,6 +31,20 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".AppBlockedActivity"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar"
+            android:excludeFromRecents="true"
+            android:launchMode="singleInstance"
+            android:exported="false" />
+
+        <activity
+            android:name=".SettingsBlockedActivity"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar"
+            android:excludeFromRecents="true"
+            android:launchMode="singleInstance"
+            android:exported="false" />
 
     </application>
 </manifest>
