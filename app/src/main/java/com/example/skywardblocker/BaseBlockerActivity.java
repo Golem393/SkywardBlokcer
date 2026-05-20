@@ -16,7 +16,7 @@ public abstract class BaseBlockerActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_blocker);
+        setContentView(R.layout.activity_main);
 
         titleText = findViewById(R.id.titleText);
         messageText = findViewById(R.id.messageText);
