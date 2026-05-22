@@ -5,7 +5,7 @@
     android:gravity="center"
     android:orientation="vertical"
     android:padding="24dp"
-    android:background="#DD000000">
+    android:background="#FF000000">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -47,6 +47,13 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Close" />
+
+        <Button
+            android:id="@+id/testResetButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="Test: Reset to Kiosk" />
 
     </LinearLayout>
 </LinearLayout>

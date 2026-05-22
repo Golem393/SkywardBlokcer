@@ -1,4 +1,6 @@
 <resources>
     <string name="app_name">SkywardBlocker</string>
     <string name="accessibility_description">Enforces device compliance policies by monitoring and restricting unauthorized application usage.</string>
+    <string name="mdm_serial_title">Device Serial Number</string>
+    <string name="mdm_serial_desc">The serial number injected by ManageEngine MDM</string>
 </resources>

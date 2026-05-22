@@ -14,9 +14,13 @@
         android:label="SkywardBlocker"
         android:theme="@style/Theme.AppCompat.Light.NoActionBar">
 
+        <meta-data
+            android:name="android.content.APP_RESTRICTIONS"
+            android:resource="@xml/app_restrictions" />
+
         <!-- The Accessibility Service -->
         <service
-            android:name=".AppBlockerService"
+            android:name=".appblock.AppBlockerService"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
             android:exported="true">
             <intent-filter>
@@ -29,7 +33,7 @@
 
         <!-- A dummy activity to force the user to the settings screen -->
         <activity
-            android:name=".MainActivity"
+            android:name="MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -37,19 +41,6 @@
             </intent-filter>
         </activity>
 
-        <activity
-            android:name=".AppBlockedActivity"
-            android:theme="@style/Theme.AppCompat.Light.NoActionBar"
-            android:excludeFromRecents="true"
-            android:launchMode="singleInstance"
-            android:exported="false" />
-
-        <activity
-            android:name=".SettingsBlockedActivity"
-            android:theme="@style/Theme.AppCompat.Light.NoActionBar"
-            android:excludeFromRecents="true"
-            android:launchMode="singleInstance"
-            android:exported="false" />
 
     </application>
 </manifest>
