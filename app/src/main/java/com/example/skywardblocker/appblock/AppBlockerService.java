@@ -3,6 +3,7 @@ package com.example.skywardblocker.appblock;
 import android.accessibilityservice.AccessibilityService;
 import android.content.Intent;
 import android.graphics.PixelFormat;
+import android.os.Build;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.WindowManager;
@@ -47,14 +48,16 @@ public class AppBlockerService extends AccessibilityService {
         CharSequence packageName = event.getPackageName();
         if (packageName == null) return;
         String pkg = packageName.toString();
-
+        if (pkg.equals(getPackageName())) {
+            return;
+        }
         if (StateManager.getState(this) != StateManager.AppState.BLOCKING) {
             return;
         }
 
         // --- 1. Block Instagram ---
-        if (pkg.equals("com.instagram.android")) {
-            showOverlay(pkg, "App Blocked", "This app was blocked by SkywardBlocker.", false);
+        if (CategoryManager.isAppInBlockedCategory(this, pkg)) {
+            showOverlay(pkg, "App Blocked", "This category of app is restricted by SkywardBlocker.", false);
             return;
         }
 
@@ -87,8 +90,8 @@ public class AppBlockerService extends AccessibilityService {
             }
         }
 
-        // If the user is on any other app (like the Home Screen), remove the overlay
-        if (!pkg.equals("com.instagram.android") && !pkg.equals("com.android.settings")) {
+        // If the user is on any other app that isn't blocked and isn't settings, remove the overlay
+        if (!CategoryManager.isAppInBlockedCategory(this, pkg) && !pkg.equals("com.android.settings")) {
             removeOverlay();
         }
     }
@@ -142,9 +145,18 @@ public class AppBlockerService extends AccessibilityService {
                 WindowManager.LayoutParams.MATCH_PARENT,
                 WindowManager.LayoutParams.MATCH_PARENT,
                 WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
-                PixelFormat.OPAQUE // CHANGED from TRANSLUCENT
+                // Added FLAG_LAYOUT_IN_SCREEN and FLAG_LAYOUT_NO_LIMITS to stretch past system bars
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                        | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
+                        | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
+                        | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                PixelFormat.OPAQUE
         );
+
+        // Force the window to draw inside the camera notch area (requires Android 9+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            params.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+        }
 
         windowManager.addView(overlayView, params);
     }
