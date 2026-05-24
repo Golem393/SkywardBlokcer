@@ -10,6 +10,7 @@ public class StateManager {
     public enum AppState {
         START_SCREEN,
         ACCESSIBILITY_SCREEN,
+        DNS_SCREEN,
         //LAUNCHER_SELECTION,
         EXIT_KIOSK,
         BLOCKING,

@@ -12,6 +12,7 @@ import android.view.accessibility.AccessibilityEvent;
 
 import com.example.skywardblocker.R;
 import com.example.skywardblocker.StateManager;
+import com.example.skywardblocker.dns.DnsAutoSetupScript;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -31,6 +32,8 @@ public class AppBlockerService extends AccessibilityService {
     // Only cleared when the user explicitly dismisses it.
     private static volatile boolean isWarningShowing = false;
 
+    private DnsAutoSetupScript dnsAutoSetupScript;
+
     private final Handler handler = new Handler(Looper.getMainLooper());
 
     @Override
@@ -40,6 +43,8 @@ public class AppBlockerService extends AccessibilityService {
         Intent intent = new Intent(this, com.example.skywardblocker.MainActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         startActivity(intent);
+        
+        dnsAutoSetupScript = new DnsAutoSetupScript();
     }
 
     @Override
@@ -53,6 +58,20 @@ public class AppBlockerService extends AccessibilityService {
 
         // Ignore our own package and system UI
         if (pkg.equals(getPackageName()) || pkg.equals("com.android.systemui")) return;
+
+        // --- Auto DNS Setup ---
+        boolean autoConfigureDns = getSharedPreferences("skyward_prefs", MODE_PRIVATE)
+                .getBoolean("auto_configure_dns", false);
+        if (autoConfigureDns) {
+            Log.d(TAG, "Auto DNS is active, saw package: " + pkg);
+            if (pkg.equals("com.android.settings")) {
+                if (dnsAutoSetupScript == null) dnsAutoSetupScript = new DnsAutoSetupScript();
+                // Ensure it's not permanently finished from a previous attempt
+                dnsAutoSetupScript.reset();
+                dnsAutoSetupScript.processEvent(event, this);
+                return; // consume event and don't block
+            }
+        }
 
         // Only block when in BLOCKING state
         if (StateManager.getState(this) != StateManager.AppState.BLOCKING) return;
@@ -72,7 +91,7 @@ public class AppBlockerService extends AccessibilityService {
             boolean isDefending = false;
 
             for (CharSequence text : event.getText()) {
-                if (text != null && text.toString().contains(appName)) {
+                if (text != null && (text.toString().contains(appName) || text.toString().toLowerCase().contains("private dns"))) {
                     isDefending = true;
                     break;
                 }

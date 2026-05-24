@@ -53,6 +53,17 @@ public class SetupViewModel extends AndroidViewModel {
                 ));
                 break;
 
+            case DNS_SCREEN:
+                stateLiveData.setValue(new SetupViewState(
+                        "Step 2: Setup DNS Filter",
+                        "Please click below to let SkywardBlocker automatically configure your DNS. Please do not touch the screen while it sets up.",
+                        "Setup DNS Filter",
+                        true,
+                        false,
+                        SetupViewState.Step.SETUP_DNS
+                ));
+                break;
+
             /*case LAUNCHER_SELECTION: // Ensure this is uncommented in StateManager
                 stateLiveData.setValue(new SetupViewState(
                         "Step 2: Setup Olauncher",
@@ -66,7 +77,7 @@ public class SetupViewModel extends AndroidViewModel {
 
             case EXIT_KIOSK: // Using this as your API / Finalize step based on your enum
                 stateLiveData.setValue(new SetupViewState(
-                        "Step 2: Finalize",
+                        "Step 3: Finalize",
                         "Click below to register your device and finalize setup.",
                         "Complete Setup",
                         true,
