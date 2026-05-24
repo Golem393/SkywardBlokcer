@@ -10,6 +10,7 @@
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
 
     <application
+
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="SkywardBlocker"
@@ -41,6 +42,13 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".appblock.WarningActivity"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar"
+            android:launchMode="singleInstance"
+            android:excludeFromRecents="true"
+            android:exported="false" />
 
     </application>
 </manifest>
