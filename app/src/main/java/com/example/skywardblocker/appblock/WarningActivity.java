@@ -46,12 +46,14 @@ public class WarningActivity extends AppCompatActivity {
         TextView messageText = findViewById(R.id.messageText);
         Button closeButton = findViewById(R.id.closeButton);
         Button actionButton = findViewById(R.id.actionButton);
-        Button testResetButton = findViewById(R.id.testResetButton);
+        Button testAccButton = findViewById(R.id.testAccButton);
+        Button testDnsButton = findViewById(R.id.testDnsButton);
+        Button testApiButton = findViewById(R.id.testApiButton);
 
         // Hide debug elements
-        if (testResetButton != null) {
-            testResetButton.setVisibility(View.GONE);
-        }
+        if (testAccButton != null) testAccButton.setVisibility(View.GONE);
+        if (testDnsButton != null) testDnsButton.setVisibility(View.GONE);
+        if (testApiButton != null) testApiButton.setVisibility(View.GONE);
 
         if (titleText != null) titleText.setText(title);
         if (messageText != null) messageText.setText(message);

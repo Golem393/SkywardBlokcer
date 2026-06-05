@@ -18,7 +18,9 @@ public class MainActivity extends AppCompatActivity {
     private TextView messageText;
     private Button actionButton;
     private Button closeButton;
-    private Button testResetButton;
+    private Button testAccButton;
+    private Button testDnsButton;
+    private Button testApiButton;
     private SetupViewModel viewModel;
 
     @Override
@@ -30,12 +32,21 @@ public class MainActivity extends AppCompatActivity {
         messageText = findViewById(R.id.messageText);
         actionButton = findViewById(R.id.actionButton);
         closeButton = findViewById(R.id.closeButton);
-        testResetButton = findViewById(R.id.testResetButton);
+        testAccButton = findViewById(R.id.testAccButton);
+        testDnsButton = findViewById(R.id.testDnsButton);
+        testApiButton = findViewById(R.id.testApiButton);
 
         viewModel = new ViewModelProvider(this).get(SetupViewModel.class);
         viewModel.getViewState().observe(this, this::updateUI);
-        if (testResetButton != null) {
-            testResetButton.setOnClickListener(v -> viewModel.onResetToKioskClicked());
+        
+        if (testAccButton != null) {
+            testAccButton.setOnClickListener(v -> handleActionClick(SetupViewState.Step.ENABLE_ACCESSIBILITY));
+        }
+        if (testDnsButton != null) {
+            testDnsButton.setOnClickListener(v -> handleActionClick(SetupViewState.Step.SETUP_DNS));
+        }
+        if (testApiButton != null) {
+            testApiButton.setOnClickListener(v -> handleActionClick(SetupViewState.Step.FINALIZE_API));
         }
 
         // Restrict back button usage unless setup is complete (IDLE state)

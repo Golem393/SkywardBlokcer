@@ -49,11 +49,23 @@
             android:text="Close" />
 
         <Button
-            android:id="@+id/testResetButton"
+            android:id="@+id/testAccButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
-            android:text="Test: Reset to Kiosk" />
+            android:text="Test: Accessibility" />
+
+        <Button
+            android:id="@+id/testDnsButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Test: DNS" />
+
+        <Button
+            android:id="@+id/testApiButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Test: API" />
 
     </LinearLayout>
 </LinearLayout>
