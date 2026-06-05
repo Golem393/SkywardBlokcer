@@ -138,10 +138,18 @@ public class AppBlockerService extends AccessibilityService {
         // Mark warning as showing BEFORE anything else — blocks all further events
         isWarningShowing = true;
 
-        // Step 1: Press Home to kill the blocked app's UI immediately
-        performGlobalAction(GLOBAL_ACTION_HOME);
+        if (isSettings) {
+            // Go back one option out of the blocked settings page so reopening Settings doesn't re-trigger
+            performGlobalAction(GLOBAL_ACTION_BACK);
+            // After a tiny delay, send the user home
+            handler.postDelayed(() -> performGlobalAction(GLOBAL_ACTION_HOME), 150);
+        } else {
+            // Step 1: Press Home to kill the blocked app's UI immediately
+            performGlobalAction(GLOBAL_ACTION_HOME);
+        }
 
         // Step 2: After a short delay (let home screen settle), show WarningActivity
+        long warningDelay = isSettings ? 450 : 300;
         handler.postDelayed(() -> {
             Intent dialogIntent = new Intent(this, WarningActivity.class);
             dialogIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
@@ -150,7 +158,7 @@ public class AppBlockerService extends AccessibilityService {
             dialogIntent.putExtra("message", message);
             dialogIntent.putExtra("is_settings", isSettings);
             startActivity(dialogIntent);
-        }, 300);
+        }, warningDelay);
     }
 
     /**
