@@ -32,6 +32,8 @@ public class MdmApiClient {
                 Log.d(TAG, "CALL 1 Send -> GET " + getUrl);
 
                 HttpURLConnection getConn = (HttpURLConnection) getUrl.openConnection();
+                getConn.setConnectTimeout(15000);
+                getConn.setReadTimeout(15000);
                 getConn.setRequestMethod("GET");
                 getConn.setRequestProperty("Accept", "application/json");
 
@@ -99,6 +101,8 @@ public class MdmApiClient {
                 Log.d(TAG, "CALL 2 Payload Body: " + jsonInputString);
 
                 HttpURLConnection putConn = (HttpURLConnection) putUrl.openConnection();
+                putConn.setConnectTimeout(15000);
+                putConn.setReadTimeout(15000);
                 putConn.setRequestMethod("PUT");
                 putConn.setRequestProperty("Content-Type", "application/json");
                 putConn.setDoOutput(true);
@@ -149,6 +153,8 @@ public class MdmApiClient {
                 String jsonInputString = "{\"memberId\": \"" + memberId + "\"}";
 
                 HttpURLConnection putConn = (HttpURLConnection) putUrl.openConnection();
+                putConn.setConnectTimeout(15000);
+                putConn.setReadTimeout(15000);
                 putConn.setRequestMethod("PUT");
                 putConn.setRequestProperty("Content-Type", "application/json");
                 putConn.setDoOutput(true);
