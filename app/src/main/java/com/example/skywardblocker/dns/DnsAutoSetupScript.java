@@ -4,10 +4,13 @@ import android.accessibilityservice.AccessibilityService;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.PixelFormat;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
+import android.view.View;
+import android.view.WindowManager;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
 
@@ -21,17 +24,33 @@ public class DnsAutoSetupScript {
     private static final String DNS_HOSTNAME = "623d88.dns.nextdns.io";
 
     private boolean isFinished = false;
+    private boolean isTransitioning = false;
     private final Handler handler = new Handler(Looper.getMainLooper());
+    private View overlayView;
+    private WindowManager windowManager;
 
     public void reset() {
+        if (isTransitioning) return;
         isFinished = false;
     }
 
     public void processEvent(AccessibilityEvent event, AccessibilityService service) {
         if (isFinished) return;
 
-        AccessibilityNodeInfo rootNode = service.getRootInActiveWindow();
-        if (rootNode == null) return;
+        showOverlay(service);
+
+        AccessibilityNodeInfo source = event.getSource();
+        AccessibilityNodeInfo rootNode = null;
+        if (source != null && source.getWindow() != null) {
+            rootNode = source.getWindow().getRoot();
+        } else {
+            rootNode = service.getRootInActiveWindow();
+        }
+
+        if (rootNode == null) {
+            Log.d(TAG, "Could not find root node.");
+            return;
+        }
 
         Log.d(TAG, "DNS Script processEvent triggered. Screen contents:");
         debugPrintNodes(rootNode, 0);
@@ -187,17 +206,54 @@ public class DnsAutoSetupScript {
     }
 
     private void finishSetup(AccessibilityService service) {
+        if (isTransitioning) return;
+        isTransitioning = true;
         isFinished = true;
         
-        SharedPreferences prefs = service.getSharedPreferences("skyward_prefs", Context.MODE_PRIVATE);
-        prefs.edit().putBoolean("auto_configure_dns", false).apply();
-
         StateManager.nextState(service);
 
         handler.postDelayed(() -> {
+            SharedPreferences prefs = service.getSharedPreferences("skyward_prefs", Context.MODE_PRIVATE);
+            prefs.edit().putBoolean("auto_configure_dns", false).apply();
+            
+            hideOverlay();
+            isTransitioning = false;
+
             Intent intent = new Intent(service, MainActivity.class);
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
             service.startActivity(intent);
-        }, 500);
+        }, 800);
+    }
+
+    public void showOverlay(AccessibilityService service) {
+        if (overlayView != null) return;
+        Log.d(TAG, "Showing touch blocking overlay...");
+        windowManager = (WindowManager) service.getSystemService(Context.WINDOW_SERVICE);
+        overlayView = new View(service);
+        overlayView.setBackgroundColor(0x80000000); // Semi-transparent black for debugging
+
+        overlayView.setOnTouchListener((v, touchEvent) -> {
+            Log.d(TAG, "Overlay intercepted touch!");
+            return true;
+        });
+
+        WindowManager.LayoutParams params = new WindowManager.LayoutParams(
+                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+                PixelFormat.TRANSLUCENT
+        );
+
+        windowManager.addView(overlayView, params);
+        Log.d(TAG, "Touch blocking overlay added.");
+    }
+
+    public void hideOverlay() {
+        if (overlayView != null && windowManager != null) {
+            windowManager.removeView(overlayView);
+            overlayView = null;
+            Log.d(TAG, "Touch blocking overlay removed.");
+        }
     }
 }
