@@ -13,6 +13,7 @@ import android.view.View;
 import android.view.WindowManager;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
+import android.provider.Settings;
 
 import com.example.skywardblocker.MainActivity;
 import com.example.skywardblocker.StateManager;
@@ -255,5 +256,11 @@ public class DnsAutoSetupScript {
             overlayView = null;
             Log.d(TAG, "Touch blocking overlay removed.");
         }
+    }
+
+    public static boolean isDnsConfigured(Context context) {
+        String mode = Settings.Global.getString(context.getContentResolver(), "private_dns_mode");
+        String specifier = Settings.Global.getString(context.getContentResolver(), "private_dns_specifier");
+        return "hostname".equals(mode) && DNS_HOSTNAME.equals(specifier);
     }
 }

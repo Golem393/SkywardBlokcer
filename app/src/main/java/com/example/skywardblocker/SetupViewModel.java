@@ -15,6 +15,7 @@ import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import com.example.skywardblocker.appblock.AppBlockerService;
+import com.example.skywardblocker.dns.DnsAutoSetupScript;
 
 public class SetupViewModel extends AndroidViewModel {
     private final MutableLiveData<SetupViewState> stateLiveData = new MutableLiveData<>();
@@ -109,6 +110,14 @@ public class SetupViewModel extends AndroidViewModel {
     // Called by MainActivity when the API button is clicked
     public void onFinalizeClicked() {
         if (isProcessingApi) return;
+
+        // Final sanity check before calling API
+        if (!isAccessibilityServiceEnabled(getApplication(), AppBlockerService.class) || !DnsAutoSetupScript.isDnsConfigured(getApplication())) {
+            Log.e("SkywardDebug", "Conditions not met before finalizing! Re-evaluating state.");
+            evaluateState();
+            return;
+        }
+
         String serialNumber = getMdmProvidedSerialNumber(getApplication());
 
         if (serialNumber == null) {
