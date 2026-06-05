@@ -85,9 +85,6 @@ public class WarningActivity extends AppCompatActivity {
      * Dismisses this activity, tells the service we're done, and goes home.
      */
     private void dismissAndGoHome() {
-        // Tell the service it's safe to process new blocking events again
-        AppBlockerService.onWarningDismissed();
-
         Intent home = new Intent(Intent.ACTION_MAIN);
         home.addCategory(Intent.CATEGORY_HOME);
         home.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -99,5 +96,19 @@ public class WarningActivity extends AppCompatActivity {
     public void onBackPressed() {
         // Prevent back button from dismissing without proper cleanup
         dismissAndGoHome();
+    }
+
+    @Override
+    protected void onUserLeaveHint() {
+        super.onUserLeaveHint();
+        // User pressed Home or Recent Apps, we should finish to unblock the service
+        finishAndRemoveTask();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // Always tell the service it's safe to process new events when this activity is destroyed
+        AppBlockerService.onWarningDismissed();
     }
 }
