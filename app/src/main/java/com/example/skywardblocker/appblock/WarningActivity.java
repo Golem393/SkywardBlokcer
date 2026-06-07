@@ -106,9 +106,15 @@ public class WarningActivity extends AppCompatActivity {
     }
 
     @Override
+    protected void onStop() {
+        super.onStop();
+        // Tell the service it's safe to process new events as soon as this activity leaves the screen.
+        // Using onStop instead of onDestroy because Android can delay onDestroy indefinitely.
+        AppBlockerService.onWarningDismissed();
+    }
+
+    @Override
     protected void onDestroy() {
         super.onDestroy();
-        // Always tell the service it's safe to process new events when this activity is destroyed
-        AppBlockerService.onWarningDismissed();
     }
 }
