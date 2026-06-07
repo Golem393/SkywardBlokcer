@@ -4,55 +4,34 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.util.Log;
-import android.view.View;
-import android.widget.Button;
-import android.widget.TextView;
-
 import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.compose.ui.platform.ComposeView;
 
 public class MainActivity extends AppCompatActivity {
 
-    private TextView titleText;
-    private TextView messageText;
-    private Button actionButton;
-    private Button closeButton;
-    private Button testAccButton;
-    private Button testDnsButton;
-    private Button testApiButton;
-    private Button testSkipApiButton;
     private SetupViewModel viewModel;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
 
-        titleText = findViewById(R.id.titleText);
-        messageText = findViewById(R.id.messageText);
-        actionButton = findViewById(R.id.actionButton);
-        closeButton = findViewById(R.id.closeButton);
-        testAccButton = findViewById(R.id.testAccButton);
-        testDnsButton = findViewById(R.id.testDnsButton);
-        testApiButton = findViewById(R.id.testApiButton);
+        ComposeView composeView = new ComposeView(this);
+        setContentView(composeView);
 
         viewModel = new ViewModelProvider(this).get(SetupViewModel.class);
         viewModel.getViewState().observe(this, this::updateUI);
-        
-        if (testAccButton != null) {
-            testAccButton.setOnClickListener(v -> handleActionClick(SetupViewState.Step.ENABLE_ACCESSIBILITY));
-        }
-        if (testDnsButton != null) {
-            testDnsButton.setOnClickListener(v -> handleActionClick(SetupViewState.Step.SETUP_DNS));
-        }
-        if (testApiButton != null) {
-            testApiButton.setOnClickListener(v -> handleActionClick(SetupViewState.Step.FINALIZE_API));
-        }
-        testSkipApiButton = findViewById(R.id.testSkipApiButton);
-        if (testSkipApiButton != null) {
-            testSkipApiButton.setOnClickListener(v -> viewModel.onSkipApiClicked());
-        }
+
+        ComposeBridge.setup(
+                composeView,
+                this::handleActionClick,
+                this::finish,
+                () -> handleActionClick(SetupViewState.Step.ENABLE_ACCESSIBILITY),
+                () -> handleActionClick(SetupViewState.Step.SETUP_DNS),
+                () -> handleActionClick(SetupViewState.Step.FINALIZE_API),
+                () -> viewModel.onSkipApiClicked()
+        );
 
         // Restrict back button usage unless setup is complete (IDLE state)
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
@@ -74,36 +53,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void updateUI(SetupViewState state) {
         if (state == null) return;
-
-        titleText.setText(state.title);
-        messageText.setText(state.message);
-
-        // Configure Action Button
-        if (state.isActionButtonVisible) {
-            actionButton.setVisibility(View.VISIBLE);
-            actionButton.setText(state.actionButtonText);
-
-            // Disable the button if it says Processing... to prevent the ripple effect
-            if ("Processing...".equals(state.actionButtonText)) {
-                actionButton.setEnabled(false);
-                actionButton.setAlpha(0.5f); // Make it look grayed out
-            } else {
-                actionButton.setEnabled(true);
-                actionButton.setAlpha(1.0f);
-                actionButton.setOnClickListener(v -> handleActionClick(state.currentStep));
-            }
-        } else {
-            actionButton.setVisibility(View.GONE);
-        }
-
-        // Configure Close Button
-        if (state.isCloseButtonVisible) {
-            closeButton.setVisibility(View.VISIBLE);
-            closeButton.setText("Close App");
-            closeButton.setOnClickListener(v -> finish());
-        } else {
-            closeButton.setVisibility(View.GONE);
-        }
+        ComposeBridge.updateState(state);
     }
 
     private void handleActionClick(SetupViewState.Step currentStep) {

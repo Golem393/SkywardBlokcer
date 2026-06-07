@@ -6,10 +6,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.view.WindowManager;
-import android.widget.Button;
-import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
-import com.example.skywardblocker.R;
 
 /**
  * Full-screen blocking activity shown after the blocked app has been killed.
@@ -20,7 +17,8 @@ public class WarningActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        androidx.compose.ui.platform.ComposeView composeView = new androidx.compose.ui.platform.ComposeView(this);
+        setContentView(composeView);
 
         // Enforce immersive fullscreen directly on the activity level safely
         getWindow().getDecorView().setSystemUiVisibility(
@@ -42,43 +40,22 @@ public class WarningActivity extends AppCompatActivity {
         String message = getIntent().getStringExtra("message");
         boolean isSettings = getIntent().getBooleanExtra("is_settings", false);
 
-        TextView titleText = findViewById(R.id.titleText);
-        TextView messageText = findViewById(R.id.messageText);
-        Button closeButton = findViewById(R.id.closeButton);
-        Button actionButton = findViewById(R.id.actionButton);
-        Button testAccButton = findViewById(R.id.testAccButton);
-        Button testDnsButton = findViewById(R.id.testDnsButton);
-        Button testApiButton = findViewById(R.id.testApiButton);
+        Runnable onActionClicked = () -> {
+            Intent intent = new Intent(Intent.ACTION_DELETE);
+            intent.setData(Uri.parse("package:" + blockedPackage));
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+            dismissAndGoHome();
+        };
 
-        // Hide debug elements
-        if (testAccButton != null) testAccButton.setVisibility(View.GONE);
-        if (testDnsButton != null) testDnsButton.setVisibility(View.GONE);
-        if (testApiButton != null) testApiButton.setVisibility(View.GONE);
-
-        if (titleText != null) titleText.setText(title);
-        if (messageText != null) messageText.setText(message);
-
-        // Show "Uninstall App" button for regular app blocks, hide for settings defense
-        if (isSettings) {
-            if (actionButton != null) actionButton.setVisibility(View.GONE);
-        } else {
-            if (actionButton != null) {
-                actionButton.setVisibility(View.VISIBLE);
-                actionButton.setText("Uninstall App");
-                actionButton.setOnClickListener(v -> {
-                    Intent intent = new Intent(Intent.ACTION_DELETE);
-                    intent.setData(Uri.parse("package:" + blockedPackage));
-                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                    startActivity(intent);
-                    dismissAndGoHome();
-                });
-            }
-        }
-
-        if (closeButton != null) {
-            closeButton.setText("Close");
-            closeButton.setOnClickListener(v -> dismissAndGoHome());
-        }
+        com.example.skywardblocker.ComposeBridge.setupWarning(
+                composeView,
+                title != null ? title : "",
+                message != null ? message : "",
+                !isSettings,
+                onActionClicked,
+                this::dismissAndGoHome
+        );
     }
 
     /**
