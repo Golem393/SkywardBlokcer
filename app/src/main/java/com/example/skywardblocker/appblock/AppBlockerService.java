@@ -39,11 +39,13 @@ public class AppBlockerService extends AccessibilityService {
     @Override
     protected void onServiceConnected() {
         super.onServiceConnected();
-
-        Intent intent = new Intent(this, com.example.skywardblocker.MainActivity.class);
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        startActivity(intent);
         
+        if (com.example.skywardblocker.StateManager.getState(this) != com.example.skywardblocker.StateManager.AppState.BLOCKING) {
+            Intent intent = new Intent(this, com.example.skywardblocker.MainActivity.class);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            startActivity(intent);
+        }
+
         dnsAutoSetupScript = new DnsAutoSetupScript();
     }
 
