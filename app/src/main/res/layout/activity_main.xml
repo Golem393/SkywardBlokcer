@@ -67,5 +67,11 @@
             android:layout_height="wrap_content"
             android:text="Test: API" />
 
+        <Button
+            android:id="@+id/testSkipApiButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Test: Skip API" />
+
     </LinearLayout>
 </LinearLayout>

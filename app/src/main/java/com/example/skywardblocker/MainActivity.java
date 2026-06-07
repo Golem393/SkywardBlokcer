@@ -21,6 +21,7 @@ public class MainActivity extends AppCompatActivity {
     private Button testAccButton;
     private Button testDnsButton;
     private Button testApiButton;
+    private Button testSkipApiButton;
     private SetupViewModel viewModel;
 
     @Override
@@ -47,6 +48,10 @@ public class MainActivity extends AppCompatActivity {
         }
         if (testApiButton != null) {
             testApiButton.setOnClickListener(v -> handleActionClick(SetupViewState.Step.FINALIZE_API));
+        }
+        testSkipApiButton = findViewById(R.id.testSkipApiButton);
+        if (testSkipApiButton != null) {
+            testSkipApiButton.setOnClickListener(v -> viewModel.onSkipApiClicked());
         }
 
         // Restrict back button usage unless setup is complete (IDLE state)
