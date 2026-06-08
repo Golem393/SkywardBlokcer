@@ -27,6 +27,7 @@ public class DnsAutoSetupScript {
     private boolean isFinished = false;
     private boolean isTransitioning = false;
     private final Handler handler = new Handler(Looper.getMainLooper());
+    private final Runnable removeOverlayRunnable = () -> hideOverlay();
     private View overlayView;
     private WindowManager windowManager;
 
@@ -233,6 +234,9 @@ public class DnsAutoSetupScript {
         overlayView = new View(service);
         overlayView.setBackgroundColor(0x80000000); // Semi-transparent black for debugging
 
+        // Set a timeout to automatically hide the overlay if setup stalls
+        handler.postDelayed(removeOverlayRunnable, 20000);
+
         overlayView.setOnTouchListener((v, touchEvent) -> {
             Log.d(TAG, "Overlay intercepted touch!");
             return true;
@@ -251,6 +255,7 @@ public class DnsAutoSetupScript {
     }
 
     public void hideOverlay() {
+        handler.removeCallbacks(removeOverlayRunnable);
         if (overlayView != null && windowManager != null) {
             windowManager.removeView(overlayView);
             overlayView = null;
