@@ -235,7 +235,7 @@ public class DnsAutoSetupScript {
         overlayView.setBackgroundColor(0x80000000); // Semi-transparent black for debugging
 
         // Set a timeout to automatically hide the overlay if setup stalls
-        handler.postDelayed(removeOverlayRunnable, 20000);
+        handler.postDelayed(removeOverlayRunnable, 3000);
 
         overlayView.setOnTouchListener((v, touchEvent) -> {
             Log.d(TAG, "Overlay intercepted touch!");
