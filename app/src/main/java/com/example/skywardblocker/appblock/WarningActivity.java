@@ -45,7 +45,7 @@ public class WarningActivity extends AppCompatActivity {
             intent.setData(Uri.parse("package:" + blockedPackage));
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(intent);
-            dismissAndGoHome();
+            finishAndRemoveTask();
         };
 
         com.example.skywardblocker.ComposeBridge.setupWarning(
