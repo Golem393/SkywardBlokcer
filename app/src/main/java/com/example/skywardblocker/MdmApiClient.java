@@ -153,8 +153,8 @@ public class MdmApiClient {
                 String jsonInputString = "{\"memberId\": \"" + memberId + "\"}";
 
                 HttpURLConnection putConn = (HttpURLConnection) putUrl.openConnection();
-                putConn.setConnectTimeout(15000);
-                putConn.setReadTimeout(15000);
+                putConn.setConnectTimeout(30000);
+                putConn.setReadTimeout(30000);
                 putConn.setRequestMethod("PUT");
                 putConn.setRequestProperty("Content-Type", "application/json");
                 putConn.setDoOutput(true);
