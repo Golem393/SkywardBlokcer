@@ -8,7 +8,7 @@ import android.util.Log;
 
 public class CategoryManager {
 
-    private static final String TAG = "AppBlockerDebug";
+    private static final String TAG = "SkywardDebug";
 
     public static boolean isAppInBlockedCategory(Context context, String packageName) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
