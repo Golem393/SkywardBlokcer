@@ -15,6 +15,8 @@ import com.example.skywardblocker.StateManager;
 import com.example.skywardblocker.dns.DnsAutoSetupScript;
 
 import android.content.IntentFilter;
+import android.database.ContentObserver;
+import android.provider.Settings;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -38,6 +40,7 @@ public class AppBlockerService extends AccessibilityService {
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private PackageChangeReceiver packageChangeReceiver;
+    private ContentObserver dnsObserver;
 
     @Override
     protected void onServiceConnected() {
@@ -64,6 +67,44 @@ public class AppBlockerService extends AccessibilityService {
 
         // Initialize the app category cache (bulk fetch + scan installed apps)
         CategoryManager.initializeCache(getApplicationContext());
+
+        // Listen for DNS changes to immediately transition when user manually saves DNS
+        dnsObserver = new ContentObserver(handler) {
+            @Override
+            public void onChange(boolean selfChange) {
+                super.onChange(selfChange);
+                checkDnsAndReturnToApp();
+            }
+        };
+        try {
+            getContentResolver().registerContentObserver(
+                    Settings.Global.getUriFor("private_dns_specifier"),
+                    false,
+                    dnsObserver
+            );
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to register DNS ContentObserver", e);
+        }
+    }
+
+    private void checkDnsAndReturnToApp() {
+        StateManager.AppState currentState = StateManager.getState(this);
+        if (currentState == StateManager.AppState.DNS_MANUAL_SCREEN || currentState == StateManager.AppState.DNS_SCREEN) {
+            if (DnsAutoSetupScript.isDnsConfigured(this)) {
+                Log.d(TAG, "DNS configured correctly (detected via observer), returning to app.");
+                
+                // If auto script is running, disable it
+                getSharedPreferences("skyward_prefs", MODE_PRIVATE)
+                        .edit().putBoolean("auto_configure_dns", false).apply();
+                if (dnsAutoSetupScript != null) {
+                    dnsAutoSetupScript.reset();
+                }
+
+                Intent intent = new Intent(this, com.example.skywardblocker.MainActivity.class);
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                startActivity(intent);
+            }
+        }
     }
 
     @Override
@@ -89,20 +130,6 @@ public class AppBlockerService extends AccessibilityService {
                 dnsAutoSetupScript.reset();
                 dnsAutoSetupScript.processEvent(event, this);
                 return; // consume event and don't block
-            }
-        } else {
-            // --- Manual DNS Setup Auto-Advance ---
-            StateManager.AppState currentState = StateManager.getState(this);
-            if (currentState == StateManager.AppState.DNS_MANUAL_SCREEN) {
-                if (pkg.equals("com.android.settings")) {
-                    if (DnsAutoSetupScript.isDnsConfigured(this)) {
-                        Log.d(TAG, "Manual DNS configured correctly, returning to app.");
-                        Intent intent = new Intent(this, com.example.skywardblocker.MainActivity.class);
-                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-                        startActivity(intent);
-                        return;
-                    }
-                }
             }
         }
 
@@ -227,6 +254,13 @@ public class AppBlockerService extends AccessibilityService {
                 unregisterReceiver(packageChangeReceiver);
             } catch (Exception e) {
                 Log.e(TAG, "Error unregistering receiver", e);
+            }
+        }
+        if (dnsObserver != null) {
+            try {
+                getContentResolver().unregisterContentObserver(dnsObserver);
+            } catch (Exception e) {
+                Log.e(TAG, "Error unregistering DNS observer", e);
             }
         }
     }
