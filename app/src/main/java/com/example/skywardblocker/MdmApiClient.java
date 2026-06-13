@@ -46,39 +46,64 @@ public class MdmApiClient {
 
     // ── Shared HTTP helper ────────────────────────────────────────────
 
+    private static final int MAX_RETRIES = 3;
+    private static final long RETRY_DELAY_MS = 2000;
+
     private static String doRequest(Context context, String method, String path, String jsonBody) throws Exception {
         URL url = new URL(getBaseUrl(context) + path);
-        Log.d(TAG, method + " " + url);
+        int attempt = 0;
+        Exception lastException = null;
 
-        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-        conn.setConnectTimeout(15000);
-        conn.setReadTimeout(15000);
-        conn.setRequestMethod(method);
-        conn.setRequestProperty("Accept", "application/json");
-        conn.setRequestProperty("X-API-Key", getApiKey(context)); // <-- Dynamically injected here
+        while (attempt < MAX_RETRIES) {
+            attempt++;
+            try {
+                Log.d(TAG, method + " " + url + " (Attempt " + attempt + " of " + MAX_RETRIES + ")");
 
-        if (jsonBody != null) {
-            conn.setRequestProperty("Content-Type", "application/json");
-            conn.setDoOutput(true);
-            try (OutputStream os = conn.getOutputStream()) {
-                os.write(jsonBody.getBytes("utf-8"));
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setConnectTimeout(20000);
+                conn.setReadTimeout(20000);
+                conn.setRequestMethod(method);
+                conn.setRequestProperty("Accept", "application/json");
+                conn.setRequestProperty("X-API-Key", getApiKey(context)); // <-- Dynamically injected here
+
+                if (jsonBody != null) {
+                    conn.setRequestProperty("Content-Type", "application/json");
+                    conn.setDoOutput(true);
+                    try (OutputStream os = conn.getOutputStream()) {
+                        os.write(jsonBody.getBytes("utf-8"));
+                    }
+                }
+
+                int code = conn.getResponseCode();
+                Log.d(TAG, "Response " + code + " from " + path);
+
+                BufferedReader reader = new BufferedReader(new InputStreamReader(
+                        code >= 400 ? conn.getErrorStream() : conn.getInputStream()));
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null) sb.append(line);
+                reader.close();
+
+                if (code >= 400) {
+                    throw new Exception("HTTP " + code + ": " + sb);
+                }
+                return sb.toString();
+
+            } catch (Exception e) {
+                lastException = e;
+                Log.w(TAG, "Request failed " + method + " " + path + ": " + e.getMessage());
+                if (attempt < MAX_RETRIES) {
+                    try {
+                        Thread.sleep(RETRY_DELAY_MS);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        throw new Exception("Request interrupted during retry delay", ie);
+                    }
+                }
             }
         }
-
-        int code = conn.getResponseCode();
-        Log.d(TAG, "Response " + code + " from " + path);
-
-        BufferedReader reader = new BufferedReader(new InputStreamReader(
-                code >= 400 ? conn.getErrorStream() : conn.getInputStream()));
-        StringBuilder sb = new StringBuilder();
-        String line;
-        while ((line = reader.readLine()) != null) sb.append(line);
-        reader.close();
-
-        if (code >= 400) {
-            throw new Exception("HTTP " + code + ": " + sb);
-        }
-        return sb.toString();
+        
+        throw new Exception("Request failed after " + MAX_RETRIES + " attempts. Last error: " + lastException.getMessage(), lastException);
     }
 
     // ── Existing MDM methods (refactored to use doRequest) ────────────
