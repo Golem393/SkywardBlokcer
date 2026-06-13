@@ -61,6 +61,35 @@ public class CategoryManager {
 
     private static String lastCheckedPackage = "";
 
+    public static void forceFetchPopularApps(Context context) {
+        Log.d(TAG, "Forcing fetch of popular apps...");
+        MdmApiClient.fetchPopularApps(context, new MdmApiClient.ApiCallback<Map<String, String>>() {
+            @Override
+            public void onSuccess(Map<String, String> popularApps) {
+                synchronized (CategoryManager.class) {
+                    cache.putAll(popularApps);
+                    saveCache(context);
+                }
+                Log.d(TAG, "Force-fetched and merged " + popularApps.size() + " popular apps into cache");
+            }
+
+            @Override
+            public void onError(String errorMessage) {
+                Log.w(TAG, "Failed to force-fetch popular apps: " + errorMessage);
+            }
+        });
+    }
+
+    public static void printCache() {
+        synchronized (CategoryManager.class) {
+            Log.d(TAG, "--- Current App Cache (" + cache.size() + " entries) ---");
+            for (Map.Entry<String, String> entry : cache.entrySet()) {
+                Log.d(TAG, "App: " + entry.getKey() + " -> Category: " + entry.getValue());
+            }
+            Log.d(TAG, "--- End of Cache ---");
+        }
+    }
+
     /**
      * Returns true if the app is in a blocked category.
      * If the category is unknown, returns false and fires an async lookup.

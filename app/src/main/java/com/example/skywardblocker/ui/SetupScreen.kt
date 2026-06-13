@@ -21,7 +21,9 @@ fun SetupScreen(
     onTestAccClicked: () -> Unit,
     onTestDnsClicked: () -> Unit,
     onTestApiClicked: () -> Unit,
-    onTestSkipApiClicked: () -> Unit
+    onTestSkipApiClicked: () -> Unit,
+    onTestFetchAppsClicked: () -> Unit,
+    onTestPrintAppsClicked: () -> Unit
 ) {
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -56,7 +58,9 @@ fun SetupScreen(
                     onTestAccClicked = onTestAccClicked,
                     onTestDnsClicked = onTestDnsClicked,
                     onTestApiClicked = onTestApiClicked,
-                    onTestSkipApiClicked = onTestSkipApiClicked
+                    onTestSkipApiClicked = onTestSkipApiClicked,
+                    onTestFetchAppsClicked = onTestFetchAppsClicked,
+                    onTestPrintAppsClicked = onTestPrintAppsClicked
                 )
             }
         }
@@ -140,17 +144,30 @@ private fun SetupDebugButtons(
     onTestAccClicked: () -> Unit,
     onTestDnsClicked: () -> Unit,
     onTestApiClicked: () -> Unit,
-    onTestSkipApiClicked: () -> Unit
+    onTestSkipApiClicked: () -> Unit,
+    onTestFetchAppsClicked: () -> Unit,
+    onTestPrintAppsClicked: () -> Unit
 ) {
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 24.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly
+            .padding(top = 24.dp)
     ) {
-        TextButton(onClick = onTestAccClicked) { Text("T:Acc", fontSize = 10.sp, color = Color.Gray) }
-        TextButton(onClick = onTestDnsClicked) { Text("T:DNS", fontSize = 10.sp, color = Color.Gray) }
-        TextButton(onClick = onTestApiClicked) { Text("T:API", fontSize = 10.sp, color = Color.Gray) }
-        TextButton(onClick = onTestSkipApiClicked) { Text("T:Skip", fontSize = 10.sp, color = Color.Gray) }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            TextButton(onClick = onTestAccClicked) { Text("T:Acc", fontSize = 10.sp, color = Color.Gray) }
+            TextButton(onClick = onTestDnsClicked) { Text("T:DNS", fontSize = 10.sp, color = Color.Gray) }
+            TextButton(onClick = onTestApiClicked) { Text("T:API", fontSize = 10.sp, color = Color.Gray) }
+            TextButton(onClick = onTestSkipApiClicked) { Text("T:Skip", fontSize = 10.sp, color = Color.Gray) }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            TextButton(onClick = onTestFetchAppsClicked) { Text("T:FetchApps", fontSize = 10.sp, color = Color.Gray) }
+            TextButton(onClick = onTestPrintAppsClicked) { Text("T:PrintApps", fontSize = 10.sp, color = Color.Gray) }
+        }
     }
 }
