@@ -95,8 +95,12 @@ public class DnsAutoSetupScript {
         
         if (editText != null) {
             String dnsHostname = getDnsHostname(service);
-            if (dnsHostname != null) {
+            if (dnsHostname == null) {
                 Log.e(TAG, "Cannot configure DNS: No hostname provided by MDM.");
+            } else {
+                Bundle arguments = new Bundle();
+                arguments.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, dnsHostname);
+                editText.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments);
             }
             
             // Step 3: Find and click the "Save" button
