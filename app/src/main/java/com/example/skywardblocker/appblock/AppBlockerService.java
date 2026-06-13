@@ -151,15 +151,9 @@ public class AppBlockerService extends AccessibilityService {
     }
 
     /**
-     * Sends the user home first (kills the blocked app's UI immediately),
-     * then shows the WarningActivity on top of the home screen after a brief delay.
-     * This prevents re-triggering because the blocked app is already dead by the time
-     * the WarningActivity appears.
+     * Shows the WarningActivity on top of the blocked app immediately.
      */
     private void triggerBlock(String blockedPackage, String title, String message, boolean isSettings) {
-        // Mark warning as showing BEFORE anything else — blocks all further events
-        isWarningShowing = true;
-
         if (isSettings) {
             // Go back one option out of the blocked settings page so reopening Settings doesn't re-trigger
             performGlobalAction(GLOBAL_ACTION_BACK);
@@ -181,6 +175,14 @@ public class AppBlockerService extends AccessibilityService {
             dialogIntent.putExtra("is_settings", isSettings);
             startActivity(dialogIntent);
         }, warningDelay);
+
+    }
+
+    /**
+     * Called by WarningActivity when it successfully shows up.
+     */
+    public static void onWarningShown() {
+        isWarningShowing = true;
     }
 
     /**

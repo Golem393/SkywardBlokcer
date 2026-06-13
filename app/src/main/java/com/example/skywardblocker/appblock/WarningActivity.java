@@ -58,6 +58,12 @@ public class WarningActivity extends AppCompatActivity {
         );
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        AppBlockerService.onWarningShown();
+    }
+
     /**
      * Dismisses this activity, tells the service we're done, and goes home.
      */
