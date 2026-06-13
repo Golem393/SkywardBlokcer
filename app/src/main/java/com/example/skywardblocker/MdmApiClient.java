@@ -60,8 +60,8 @@ public class MdmApiClient {
                 Log.d(TAG, method + " " + url + " (Attempt " + attempt + " of " + MAX_RETRIES + ")");
 
                 HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                conn.setConnectTimeout(60000);
-                conn.setReadTimeout(60000);
+                conn.setConnectTimeout(120000);
+                conn.setReadTimeout(120000);
                 conn.setRequestMethod(method);
                 conn.setRequestProperty("Accept", "application/json");
                 conn.setRequestProperty("X-API-Key", getApiKey(context)); // <-- Dynamically injected here
