@@ -23,7 +23,8 @@ fun SetupScreen(
     onTestApiClicked: () -> Unit,
     onTestSkipApiClicked: () -> Unit,
     onTestFetchAppsClicked: () -> Unit,
-    onTestPrintAppsClicked: () -> Unit
+    onTestPrintAppsClicked: () -> Unit,
+    onTestResetWarningClicked: () -> Unit
 ) {
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -60,7 +61,8 @@ fun SetupScreen(
                     onTestApiClicked = onTestApiClicked,
                     onTestSkipApiClicked = onTestSkipApiClicked,
                     onTestFetchAppsClicked = onTestFetchAppsClicked,
-                    onTestPrintAppsClicked = onTestPrintAppsClicked
+                    onTestPrintAppsClicked = onTestPrintAppsClicked,
+                    onTestResetWarningClicked = onTestResetWarningClicked
                 )
             }
         }
@@ -146,7 +148,8 @@ private fun SetupDebugButtons(
     onTestApiClicked: () -> Unit,
     onTestSkipApiClicked: () -> Unit,
     onTestFetchAppsClicked: () -> Unit,
-    onTestPrintAppsClicked: () -> Unit
+    onTestPrintAppsClicked: () -> Unit,
+    onTestResetWarningClicked: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -168,6 +171,7 @@ private fun SetupDebugButtons(
         ) {
             TextButton(onClick = onTestFetchAppsClicked) { Text("T:FetchApps", fontSize = 10.sp, color = Color.Gray) }
             TextButton(onClick = onTestPrintAppsClicked) { Text("T:PrintApps", fontSize = 10.sp, color = Color.Gray) }
+            TextButton(onClick = onTestResetWarningClicked) { Text("T:ResetLock", fontSize = 10.sp, color = Color.Gray) }
         }
     }
 }

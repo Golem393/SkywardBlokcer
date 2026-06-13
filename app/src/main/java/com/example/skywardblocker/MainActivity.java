@@ -32,7 +32,8 @@ public class MainActivity extends AppCompatActivity {
                 () -> handleActionClick(SetupViewState.Step.FINALIZE_API),
                 () -> viewModel.onSkipApiClicked(),
                 () -> com.example.skywardblocker.appblock.CategoryManager.forceFetchPopularApps(this),
-                () -> com.example.skywardblocker.appblock.CategoryManager.printCache()
+                () -> com.example.skywardblocker.appblock.CategoryManager.printCache(),
+                () -> com.example.skywardblocker.appblock.AppBlockerService.onWarningDismissed()
         );
 
         // Restrict back button usage unless setup is complete (IDLE state)
