@@ -96,6 +96,11 @@ public class CategoryManager {
      * The app will be blocked on subsequent opens once the category is resolved.
      */
     public static synchronized boolean isAppInBlockedCategory(Context context, String packageName) {
+        if (context.getPackageManager().getLaunchIntentForPackage(packageName) == null) {
+            // There is no UI for the user to open. It's a background OS component.
+            return false;
+        }
+
         loadCacheIfNeeded(context);
 
         String category = cache.get(packageName);
@@ -196,8 +201,8 @@ public class CategoryManager {
         List<ApplicationInfo> apps = pm.getInstalledApplications(0);
 
         for (ApplicationInfo app : apps) {
-            // Skip system apps
-            if ((app.flags & ApplicationInfo.FLAG_SYSTEM) != 0) continue;
+            // Skip apps that have no launchable UI (background/system processes)
+            if (pm.getLaunchIntentForPackage(app.packageName) == null) continue;
 
             synchronized (CategoryManager.class) {
                 if (!cache.containsKey(app.packageName)) {
