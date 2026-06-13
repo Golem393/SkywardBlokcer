@@ -90,6 +90,20 @@ public class AppBlockerService extends AccessibilityService {
                 dnsAutoSetupScript.processEvent(event, this);
                 return; // consume event and don't block
             }
+        } else {
+            // --- Manual DNS Setup Auto-Advance ---
+            StateManager.AppState currentState = StateManager.getState(this);
+            if (currentState == StateManager.AppState.DNS_MANUAL_SCREEN) {
+                if (pkg.equals("com.android.settings")) {
+                    if (DnsAutoSetupScript.isDnsConfigured(this)) {
+                        Log.d(TAG, "Manual DNS configured correctly, returning to app.");
+                        Intent intent = new Intent(this, com.example.skywardblocker.MainActivity.class);
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                        startActivity(intent);
+                        return;
+                    }
+                }
+            }
         }
 
         // Only block when in BLOCKING state
