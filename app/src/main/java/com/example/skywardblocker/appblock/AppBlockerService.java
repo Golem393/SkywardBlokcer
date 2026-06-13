@@ -14,6 +14,7 @@ import com.example.skywardblocker.R;
 import com.example.skywardblocker.StateManager;
 import com.example.skywardblocker.dns.DnsAutoSetupScript;
 
+import android.content.IntentFilter;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -36,6 +37,7 @@ public class AppBlockerService extends AccessibilityService {
     private DnsAutoSetupScript dnsAutoSetupScript;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
+    private PackageChangeReceiver packageChangeReceiver;
 
     @Override
     protected void onServiceConnected() {
@@ -51,6 +53,14 @@ public class AppBlockerService extends AccessibilityService {
         }
 
         dnsAutoSetupScript = new DnsAutoSetupScript();
+
+        // Dynamically register PackageChangeReceiver for Android 8.0+
+        packageChangeReceiver = new PackageChangeReceiver();
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(Intent.ACTION_PACKAGE_ADDED);
+        filter.addAction(Intent.ACTION_PACKAGE_FULLY_REMOVED);
+        filter.addDataScheme("package");
+        registerReceiver(packageChangeReceiver, filter);
 
         // Initialize the app category cache (bulk fetch + scan installed apps)
         CategoryManager.initializeCache(getApplicationContext());
@@ -184,4 +194,16 @@ public class AppBlockerService extends AccessibilityService {
 
     @Override
     public void onInterrupt() {}
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        if (packageChangeReceiver != null) {
+            try {
+                unregisterReceiver(packageChangeReceiver);
+            } catch (Exception e) {
+                Log.e(TAG, "Error unregistering receiver", e);
+            }
+        }
+    }
 }
