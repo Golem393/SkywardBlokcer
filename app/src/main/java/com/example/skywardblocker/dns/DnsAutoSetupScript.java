@@ -263,7 +263,7 @@ public class DnsAutoSetupScript {
         }
     }
 
-    private static String getDnsHostname(Context context) {
+    public static String getDnsHostname(Context context) {
         RestrictionsManager rm = (RestrictionsManager) context.getSystemService(Context.RESTRICTIONS_SERVICE);
         if (rm != null) {
             Bundle restrictions = rm.getApplicationRestrictions();

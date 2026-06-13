@@ -110,12 +110,20 @@ public class AppBlockerService extends AccessibilityService {
                 && pkg.equals("com.android.settings") && event.getText() != null) {
 
             String appName = getString(R.string.app_name);
+            String dnsHostname = DnsAutoSetupScript.getDnsHostname(this);
             boolean isDefending = false;
 
             for (CharSequence text : event.getText()) {
-                if (text != null && (text.toString().contains(appName) || text.toString().toLowerCase().contains("private dns"))) {
-                    isDefending = true;
-                    break;
+                if (text != null) {
+                    String textStr = text.toString();
+                    if (textStr.contains(appName)) {
+                        isDefending = true;
+                        break;
+                    }
+                    if (dnsHostname != null && textStr.contains(dnsHostname)) {
+                        isDefending = true;
+                        break;
+                    }
                 }
             }
 
