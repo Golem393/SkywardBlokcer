@@ -11,6 +11,7 @@ public class StateManager {
         START_SCREEN,
         ACCESSIBILITY_SCREEN,
         DNS_SCREEN,
+        DNS_MANUAL_SCREEN,
         //LAUNCHER_SELECTION,
         EXIT_KIOSK,
         BLOCKING,

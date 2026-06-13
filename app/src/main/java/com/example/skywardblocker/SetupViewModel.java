@@ -63,12 +63,30 @@ public class SetupViewModel extends AndroidViewModel {
                 }
 
                 stateLiveData.setValue(new SetupViewState(
-                        "Step 2: Setup DNS Filter",
-                        "Click below to configure DNS. SkywardBlocker will attempt this automatically, but you may need to enter it manually if your device language or layout is unsupported.",
-                        "Setup / Verify DNS",
+                        "Step 2: Auto Configure DNS",
+                        "SkywardBlocker will attempt to automatically configure DNS on your device. Click below to begin.",
+                        "Try Auto Setup",
                         true,
                         false,
                         SetupViewState.Step.SETUP_DNS
+                ));
+                break;
+
+            case DNS_MANUAL_SCREEN:
+                // Check if the condition is already met. If yes, auto-advance.
+                if (DnsAutoSetupScript.isDnsConfigured(app)) {
+                    StateManager.nextState(app);
+                    evaluateState(); // Recursively evaluate the new state
+                    return;
+                }
+
+                stateLiveData.setValue(new SetupViewState(
+                        "Step 2: Manual DNS Setup",
+                        "Automatic setup failed or your device is unsupported. Please click below to open settings and configure Private DNS manually.",
+                        "Open Settings",
+                        true,
+                        false,
+                        SetupViewState.Step.SETUP_DNS_MANUAL
                 ));
                 break;
 

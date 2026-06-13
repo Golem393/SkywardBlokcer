@@ -86,6 +86,21 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
                 break;
+            case SETUP_DNS_MANUAL:
+                // Launch the Network & Internet settings screen without setting auto_configure_dns
+                try {
+                    Intent intent2 = new Intent(Settings.ACTION_WIRELESS_SETTINGS);
+                    startActivity(intent2);
+                } catch (Exception e) {
+                    Log.d("SkywardDebug", "failed: " + e.getMessage());
+                    try {
+                        Intent fallback = new Intent(Settings.ACTION_SETTINGS);
+                        startActivity(fallback);
+                    } catch (Exception e2) {
+                        Log.d("SkywardDebug", "fallback failed: " + e2.getMessage());
+                    }
+                }
+                break;
             case FINALIZE_API:
                 viewModel.onFinalizeClicked();
                 break;

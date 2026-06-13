@@ -12,6 +12,7 @@ public class SetupViewState {
     public enum Step {
         ENABLE_ACCESSIBILITY,
         SETUP_DNS,
+        SETUP_DNS_MANUAL,
         FINALIZE_API,
         COMPLETE
     }

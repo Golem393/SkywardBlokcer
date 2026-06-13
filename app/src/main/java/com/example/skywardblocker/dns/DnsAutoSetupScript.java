@@ -244,13 +244,14 @@ public class DnsAutoSetupScript {
             SharedPreferences prefs = service.getSharedPreferences("skyward_prefs", Context.MODE_PRIVATE);
             prefs.edit().putBoolean("auto_configure_dns", false).apply();
 
-            // Send user back to main settings page to start manual setup from scratch
-            Intent intent = new Intent(Settings.ACTION_SETTINGS);
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            // Move to DNS_MANUAL_SCREEN and send user back to the app
+            StateManager.nextState(service);
+            Intent intent = new Intent(service, MainActivity.class);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
             try {
                 service.startActivity(intent);
             } catch (Exception e) {
-                Log.e(TAG, "Failed to jump back to settings on timeout.", e);
+                Log.e(TAG, "Failed to jump back to app on timeout.", e);
             }
 
             // Keep the overlay active for a short time to hide the transition
