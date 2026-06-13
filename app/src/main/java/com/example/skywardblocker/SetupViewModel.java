@@ -55,10 +55,17 @@ public class SetupViewModel extends AndroidViewModel {
                 break;
 
             case DNS_SCREEN:
+                // Check if the condition is already met. If yes, auto-advance.
+                if (DnsAutoSetupScript.isDnsConfigured(app)) {
+                    StateManager.nextState(app);
+                    evaluateState(); // Recursively evaluate the new state
+                    return;
+                }
+
                 stateLiveData.setValue(new SetupViewState(
                         "Step 2: Setup DNS Filter",
-                        "Please click below to let SkywardBlocker automatically configure your DNS. Please do not touch the screen while it sets up.",
-                        "Setup DNS Filter",
+                        "Click below to configure DNS. SkywardBlocker will attempt this automatically, but you may need to enter it manually if your device language or layout is unsupported.",
+                        "Setup / Verify DNS",
                         true,
                         false,
                         SetupViewState.Step.SETUP_DNS

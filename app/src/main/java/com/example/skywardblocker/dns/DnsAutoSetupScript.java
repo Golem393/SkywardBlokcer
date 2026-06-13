@@ -27,7 +27,7 @@ public class DnsAutoSetupScript {
     private boolean isFinished = false;
     private boolean isTransitioning = false;
     private final Handler handler = new Handler(Looper.getMainLooper());
-    private final Runnable removeOverlayRunnable = () -> hideOverlay();
+    private Runnable timeoutRunnable;
     private View overlayView;
     private WindowManager windowManager;
 
@@ -234,8 +234,31 @@ public class DnsAutoSetupScript {
         overlayView = new View(service);
         overlayView.setBackgroundColor(0x80000000); // Semi-transparent black for debugging
 
-        // Set a timeout to automatically hide the overlay if setup stalls
-        handler.postDelayed(removeOverlayRunnable, 3000);
+        // Set a timeout to automatically abort if setup stalls
+        timeoutRunnable = () -> {
+            Log.d(TAG, "DNS Script timed out. Aborting auto-setup.");
+            isFinished = true;
+            isTransitioning = false;
+
+            // Disable the auto script to prevent infinite loops
+            SharedPreferences prefs = service.getSharedPreferences("skyward_prefs", Context.MODE_PRIVATE);
+            prefs.edit().putBoolean("auto_configure_dns", false).apply();
+
+            // Send user back to main settings page to start manual setup from scratch
+            Intent intent = new Intent(Settings.ACTION_SETTINGS);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            try {
+                service.startActivity(intent);
+            } catch (Exception e) {
+                Log.e(TAG, "Failed to jump back to settings on timeout.", e);
+            }
+
+            // Keep the overlay active for a short time to hide the transition
+            handler.postDelayed(() -> {
+                hideOverlay();
+            }, 400);
+        };
+        handler.postDelayed(timeoutRunnable, 3000);
 
         overlayView.setOnTouchListener((v, touchEvent) -> {
             Log.d(TAG, "Overlay intercepted touch!");
@@ -255,7 +278,10 @@ public class DnsAutoSetupScript {
     }
 
     public void hideOverlay() {
-        handler.removeCallbacks(removeOverlayRunnable);
+        if (timeoutRunnable != null) {
+            handler.removeCallbacks(timeoutRunnable);
+            timeoutRunnable = null;
+        }
         if (overlayView != null && windowManager != null) {
             windowManager.removeView(overlayView);
             overlayView = null;
