@@ -7,4 +7,6 @@
     <string name="mdm_api_key_desc">The API key injected by ManageEngine MDM</string>
     <string name="mdm_base_url_title">Base URL</string>
     <string name="mdm_base_url_desc">The Backend URL injected by ManageEngine MDM</string>
+    <string name="mdm_dns_hostname_title">DNS Hostname</string>
+    <string name="mdm_dns_hostname_desc">The DNS Hostname injected by ManageEngine MDM</string>
 </resources>

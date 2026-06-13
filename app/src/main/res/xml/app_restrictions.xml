@@ -17,4 +17,10 @@
         android:title="@string/mdm_base_url_title"
         android:restrictionType="string"
         android:description="@string/mdm_base_url_desc" />
+
+    <restriction
+        android:key="mdm_dns_hostname"
+        android:title="@string/mdm_dns_hostname_title"
+        android:restrictionType="string"
+        android:description="@string/mdm_dns_hostname_desc" />
 </restrictions>

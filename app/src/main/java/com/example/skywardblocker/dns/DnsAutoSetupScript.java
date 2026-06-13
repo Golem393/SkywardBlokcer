@@ -14,6 +14,7 @@ import android.view.WindowManager;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
 import android.provider.Settings;
+import android.content.RestrictionsManager;
 
 import com.example.skywardblocker.MainActivity;
 import com.example.skywardblocker.StateManager;
@@ -22,7 +23,6 @@ import java.util.List;
 
 public class DnsAutoSetupScript {
     private static final String TAG = "SkywardDebug";
-    private static final String DNS_HOSTNAME = "623d88.dns.nextdns.io";
 
     private boolean isFinished = false;
     private boolean isTransitioning = false;
@@ -94,10 +94,10 @@ public class DnsAutoSetupScript {
         AccessibilityNodeInfo editText = findEditText(rootNode);
         
         if (editText != null) {
-            Bundle arguments = new Bundle();
-            arguments.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, DNS_HOSTNAME);
-            editText.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments);
-            Log.d(TAG, "DNS hostname entered.");
+            String dnsHostname = getDnsHostname(service);
+            if (dnsHostname != null) {
+                Log.e(TAG, "Cannot configure DNS: No hostname provided by MDM.");
+            }
             
             // Step 3: Find and click the "Save" button
             boolean clickedSave = clickNodeByText(rootNode, "Save");
@@ -263,9 +263,28 @@ public class DnsAutoSetupScript {
         }
     }
 
+    private static String getDnsHostname(Context context) {
+        RestrictionsManager rm = (RestrictionsManager) context.getSystemService(Context.RESTRICTIONS_SERVICE);
+        if (rm != null) {
+            Bundle restrictions = rm.getApplicationRestrictions();
+            if (restrictions != null && restrictions.containsKey("mdm_dns_hostname")) {
+                String hostname = restrictions.getString("mdm_dns_hostname");
+                if (hostname != null && !hostname.trim().isEmpty()) {
+                    return hostname;
+                }
+            }
+        }
+        return null;
+    }
+
     public static boolean isDnsConfigured(Context context) {
+        String expectedHostname = getDnsHostname(context);
+        if (expectedHostname == null) {
+            return false;
+        }
+        
         String mode = Settings.Global.getString(context.getContentResolver(), "private_dns_mode");
         String specifier = Settings.Global.getString(context.getContentResolver(), "private_dns_specifier");
-        return "hostname".equals(mode) && DNS_HOSTNAME.equals(specifier);
+        return "hostname".equals(mode) && expectedHostname.equals(specifier);
     }
 }
