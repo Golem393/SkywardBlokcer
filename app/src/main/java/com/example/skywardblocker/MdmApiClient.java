@@ -1,5 +1,8 @@
 package com.example.skywardblocker;
 
+import android.content.Context;
+import android.content.RestrictionsManager;
+import android.os.Bundle;
 import android.util.Log;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -9,171 +12,160 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.HashMap;
+import java.util.Map;
 
 public class MdmApiClient {
 
     private static final String TAG = "SkywardDebug";
-    private static final String BASE_URL = "https://mdm-backend-i4b0.onrender.com/api";
 
+    // ── Generic callback ──────────────────────────────────────────────
+
+    public interface ApiCallback<T> {
+        void onSuccess(T result);
+        void onError(String errorMessage);
+    }
+
+    // Keep old interface for backward compat with SetupViewModel
     public interface MdmCallback {
         void onSuccess(String memberId);
         void onError(String errorMessage);
     }
 
-    public static void finalizeDeviceSetup(String targetSerialNumber, MdmCallback callback) {
+    // ── Dynamic Config Fetchers ───────────────────────────────────────
+
+    private static String getBaseUrl(Context context) {
+        RestrictionsManager rm = (RestrictionsManager) context.getSystemService(Context.RESTRICTIONS_SERVICE);
+        return rm.getApplicationRestrictions().getString("mdm_base_url");
+    }
+
+    private static String getApiKey(Context context) {
+        RestrictionsManager rm = (RestrictionsManager) context.getSystemService(Context.RESTRICTIONS_SERVICE);
+        return rm.getApplicationRestrictions().getString("mdm_api_key");
+    }
+
+    // ── Shared HTTP helper ────────────────────────────────────────────
+
+    private static String doRequest(Context context, String method, String path, String jsonBody) throws Exception {
+        URL url = new URL(getBaseUrl(context) + path);
+        Log.d(TAG, method + " " + url);
+
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        conn.setConnectTimeout(15000);
+        conn.setReadTimeout(15000);
+        conn.setRequestMethod(method);
+        conn.setRequestProperty("Accept", "application/json");
+        conn.setRequestProperty("X-API-Key", getApiKey(context)); // <-- Dynamically injected here
+
+        if (jsonBody != null) {
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setDoOutput(true);
+            try (OutputStream os = conn.getOutputStream()) {
+                os.write(jsonBody.getBytes("utf-8"));
+            }
+        }
+
+        int code = conn.getResponseCode();
+        Log.d(TAG, "Response " + code + " from " + path);
+
+        BufferedReader reader = new BufferedReader(new InputStreamReader(
+                code >= 400 ? conn.getErrorStream() : conn.getInputStream()));
+        StringBuilder sb = new StringBuilder();
+        String line;
+        while ((line = reader.readLine()) != null) sb.append(line);
+        reader.close();
+
+        if (code >= 400) {
+            throw new Exception("HTTP " + code + ": " + sb);
+        }
+        return sb.toString();
+    }
+
+    // ── Existing MDM methods (refactored to use doRequest) ────────────
+
+    public static void finalizeDeviceSetup(Context context, String targetSerial, MdmCallback callback) {
         new Thread(() -> {
             try {
-                Log.d(TAG, "Starting finalization workflow for Target Serial: [" + targetSerialNumber + "]");
-
-                // ==========================================
-                // CALL 1: Get all devices from Kiosk Group
-                // ==========================================
-                URL getUrl = new URL(BASE_URL + "/kiosk-devices");
-                Log.d(TAG, "CALL 1 Send -> GET " + getUrl);
-
-                HttpURLConnection getConn = (HttpURLConnection) getUrl.openConnection();
-                getConn.setConnectTimeout(15000);
-                getConn.setReadTimeout(15000);
-                getConn.setRequestMethod("GET");
-                getConn.setRequestProperty("Accept", "application/json");
-
-                int getResponseCode = getConn.getResponseCode();
-                Log.d(TAG, "CALL 1 Response Status Code: " + getResponseCode);
-
-                if (getResponseCode != 200) {
-                    callback.onError("Failed to fetch kiosk devices. Code: " + getResponseCode);
-                    return;
-                }
-
-                BufferedReader in = new BufferedReader(new InputStreamReader(getConn.getInputStream()));
-                StringBuilder response = new StringBuilder();
-                String line;
-                while ((line = in.readLine()) != null) {
-                    response.append(line);
-                }
-                in.close();
-
-                String rawResponseString = response.toString();
-                // Logs the entire raw JSON payload returned from your backend node proxy
-                Log.d(TAG, "CALL 1 Raw JSON Output:\n" + rawResponseString);
-
-                // ==========================================
-                // PARSE: Find matching device_id by Serial
-                // ==========================================
-                JSONObject jsonResponse = new JSONObject(rawResponseString);
-                JSONArray devices = jsonResponse.optJSONArray("devices");
+                // Step 1: Get kiosk devices
+                String devicesJson = doRequest(context, "GET", "/kiosk-devices", null);
+                JSONObject root = new JSONObject(devicesJson);
+                JSONArray devices = root.optJSONArray("devices");
 
                 String memberId = null;
-
                 if (devices != null) {
-                    Log.d(TAG, "Parsing array of " + devices.length() + " managed device(s)...");
                     for (int i = 0; i < devices.length(); i++) {
-                        JSONObject device = devices.getJSONObject(i);
-                        String currentSerial = device.optString("serial_number");
-                        String deviceName = device.optString("device_name");
-
-                        Log.d(TAG, String.format("Checking index %d: Name=[%s], Serial=[%s]", i, deviceName, currentSerial));
-
-                        if (targetSerialNumber != null && targetSerialNumber.equalsIgnoreCase(currentSerial)) {
-                            memberId = device.optString("device_id");
-                            Log.i(TAG, "Match Found! Device Name: [" + deviceName + "] mapped to MemberID: [" + memberId + "]");
+                        JSONObject d = devices.getJSONObject(i);
+                        if (targetSerial != null && targetSerial.equalsIgnoreCase(d.optString("serial_number"))) {
+                            memberId = d.optString("device_id");
+                            Log.i(TAG, "Matched serial → memberId: " + memberId);
                             break;
                         }
                     }
-                } else {
-                    Log.w(TAG, "No 'devices' key or array found inside the JSON object root structure.");
                 }
 
                 if (memberId == null || memberId.isEmpty()) {
-                    String err = "Device target serial " + targetSerialNumber + " not matched inside the Kiosk group list.";
-                    Log.e(TAG, err);
-                    callback.onError(err);
+                    callback.onError("Serial " + targetSerial + " not found in kiosk group.");
                     return;
                 }
 
-                // ==========================================
-                // CALL 2: Move device to Official Group
-                // ==========================================
-                URL putUrl = new URL(BASE_URL + "/move-member-to-official");
-                String jsonInputString = "{\"memberId\": \"" + memberId + "\"}";
-
-                Log.d(TAG, "CALL 2 Send -> PUT " + putUrl);
-                Log.d(TAG, "CALL 2 Payload Body: " + jsonInputString);
-
-                HttpURLConnection putConn = (HttpURLConnection) putUrl.openConnection();
-                putConn.setConnectTimeout(15000);
-                putConn.setReadTimeout(15000);
-                putConn.setRequestMethod("PUT");
-                putConn.setRequestProperty("Content-Type", "application/json");
-                putConn.setDoOutput(true);
-
-                try (OutputStream os = putConn.getOutputStream()) {
-                    byte[] input = jsonInputString.getBytes("utf-8");
-                    os.write(input, 0, input.length);
-                }
-
-                int putResponseCode = putConn.getResponseCode();
-                Log.d(TAG, "CALL 2 Response Status Code: " + putResponseCode);
-
-                if (putResponseCode == 200) {
-                    Log.i(TAG, "Successfully execution completed on Node proxy backend Server.");
-                    callback.onSuccess(memberId);
-                } else {
-                    // Try to catch error body stream info if available
-                    BufferedReader errReader = new BufferedReader(new InputStreamReader(
-                            putResponseCode >= 400 ? putConn.getErrorStream() : putConn.getInputStream()
-                    ));
-                    StringBuilder errResponse = new StringBuilder();
-                    while ((line = errReader.readLine()) != null) {
-                        errResponse.append(line);
-                    }
-                    errReader.close();
-
-                    Log.e(TAG, "CALL 2 Failed Output: " + errResponse.toString());
-                    callback.onError("Failed to switch groups. HTTP Code: " + putResponseCode);
-                }
+                // Step 2: Move to official group
+                String body = "{\"memberId\": \"" + memberId + "\"}";
+                doRequest(context, "PUT", "/move-member-to-official", body);
+                callback.onSuccess(memberId);
 
             } catch (Exception e) {
-                Log.e(TAG, "Exception caught during API Execution Pipeline chain", e);
+                Log.e(TAG, "finalizeDeviceSetup failed", e);
                 callback.onError(e.getMessage());
             }
         }).start();
     }
 
-    // Completely replace your old moveDeviceToKiosk with this stripped-down version
-    public static void moveDeviceToKiosk(String memberId, MdmCallback callback) {
-        if (memberId == null) {
-            callback.onError("No cached memberId found. Cannot rollback.");
-            return;
-        }
 
+
+    // ── New category endpoints ────────────────────────────────────────
+
+    /**
+     * Fetches bulk popular-apps list from backend.
+     * Expected response: { "apps": [ {"packageName":"...", "category":"GAME"}, ... ] }
+     */
+    public static void fetchPopularApps(Context context, ApiCallback<Map<String, String>> callback) {
         new Thread(() -> {
             try {
-                URL putUrl = new URL(BASE_URL + "/move-member-to-kiosk");
-                String jsonInputString = "{\"memberId\": \"" + memberId + "\"}";
+                String json = doRequest(context, "GET", "/popular-apps", null);
+                JSONObject root = new JSONObject(json);
+                JSONArray apps = root.getJSONArray("apps");
 
-                HttpURLConnection putConn = (HttpURLConnection) putUrl.openConnection();
-                putConn.setConnectTimeout(30000);
-                putConn.setReadTimeout(30000);
-                putConn.setRequestMethod("PUT");
-                putConn.setRequestProperty("Content-Type", "application/json");
-                putConn.setDoOutput(true);
-
-                try (OutputStream os = putConn.getOutputStream()) {
-                    byte[] input = jsonInputString.getBytes("utf-8");
-                    os.write(input, 0, input.length);
+                Map<String, String> result = new HashMap<>();
+                for (int i = 0; i < apps.length(); i++) {
+                    JSONObject app = apps.getJSONObject(i);
+                    result.put(app.getString("packageName"), app.getString("category"));
                 }
-
-                int putResponseCode = putConn.getResponseCode();
-                if (putResponseCode == 200) {
-                    callback.onSuccess(memberId);
-                } else {
-                    callback.onError("Failed to revert group. HTTP Code: " + putResponseCode);
-                }
+                Log.d(TAG, "Fetched " + result.size() + " popular apps");
+                callback.onSuccess(result);
             } catch (Exception e) {
+                Log.e(TAG, "fetchPopularApps failed", e);
                 callback.onError(e.getMessage());
             }
         }).start();
     }
 
+    /**
+     * Looks up a single app's Play Store category.
+     * Expected response: { "packageName":"...", "category":"SOCIAL" }
+     */
+    public static void fetchAppCategory(Context context, String packageName, ApiCallback<String> callback) {
+        new Thread(() -> {
+            try {
+                String body = "{\"packageName\": \"" + packageName + "\"}";
+                String json = doRequest(context, "POST", "/app-category", body);
+                JSONObject root = new JSONObject(json);
+                String category = root.getString("category");
+                Log.d(TAG, "Resolved " + packageName + " → " + category);
+                callback.onSuccess(category);
+            } catch (Exception e) {
+                Log.e(TAG, "fetchAppCategory failed for " + packageName, e);
+                callback.onError(e.getMessage());
+            }
+        }).start();
+    }
 }

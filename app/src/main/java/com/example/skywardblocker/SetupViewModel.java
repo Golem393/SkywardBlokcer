@@ -140,7 +140,7 @@ public class SetupViewModel extends AndroidViewModel {
         ));
 
         // Call our separated API script
-        MdmApiClient.finalizeDeviceSetup(serialNumber, new MdmApiClient.MdmCallback() {
+        MdmApiClient.finalizeDeviceSetup(getApplication(), serialNumber, new MdmApiClient.MdmCallback() {
             @Override
             public void onSuccess(String memberId) {
                 new Handler(Looper.getMainLooper()).post(() -> {
@@ -195,26 +195,7 @@ public class SetupViewModel extends AndroidViewModel {
         return null;
     }
 
-    public void onResetToKioskClicked() {
-        // Fetch the cached ID instead of the serial number
-        String cachedMemberId = StateManager.getMemberId(getApplication());
 
-        MdmApiClient.moveDeviceToKiosk(cachedMemberId, new MdmApiClient.MdmCallback() {
-            @Override
-            public void onSuccess(String memberId) {
-                new Handler(Looper.getMainLooper()).post(() -> {
-                    // Wipe the cached ID and reset state
-                    StateManager.setMemberId(getApplication(), null);
-                    StateManager.resetState(getApplication());
-                    evaluateState();
-                });
-            }
-            @Override
-            public void onError(String errorMessage) {
-                Log.e("SkywardDebug", "Rollback Failed: " + errorMessage);
-            }
-        });
-    }
 
     private boolean isAccessibilityServiceEnabled(Application context, Class<?> accessibilityService) {
         ComponentName expectedComponentName = new ComponentName(context, accessibilityService);

@@ -3,4 +3,8 @@
     <string name="accessibility_description">Enforces device compliance policies by monitoring and restricting unauthorized application usage.</string>
     <string name="mdm_serial_title">Device Serial Number</string>
     <string name="mdm_serial_desc">The serial number injected by ManageEngine MDM</string>
+    <string name="mdm_api_key_title">API Key</string>
+    <string name="mdm_api_key_desc">The API key injected by ManageEngine MDM</string>
+    <string name="mdm_base_url_title">Base URL</string>
+    <string name="mdm_base_url_desc">The Backend URL injected by ManageEngine MDM</string>
 </resources>

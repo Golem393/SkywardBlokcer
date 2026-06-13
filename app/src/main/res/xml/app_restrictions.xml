@@ -5,4 +5,16 @@
         android:title="@string/mdm_serial_title"
         android:restrictionType="string"
         android:description="@string/mdm_serial_desc" />
+
+    <restriction
+        android:key="mdm_api_key"
+        android:title="@string/mdm_api_key_title"
+        android:restrictionType="string"
+        android:description="@string/mdm_api_key_desc" />
+
+    <restriction
+        android:key="mdm_base_url"
+        android:title="@string/mdm_base_url_title"
+        android:restrictionType="string"
+        android:description="@string/mdm_base_url_desc" />
 </restrictions>

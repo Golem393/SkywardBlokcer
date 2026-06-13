@@ -50,6 +50,9 @@ public class AppBlockerService extends AccessibilityService {
         }
 
         dnsAutoSetupScript = new DnsAutoSetupScript();
+
+        // Initialize the app category cache (bulk fetch + scan installed apps)
+        CategoryManager.initializeCache(getApplicationContext());
     }
 
     @Override
