@@ -45,9 +45,7 @@ public class CategoryManager {
             "GAME_WORD",
             "SOCIAL",
             "ENTERTAINMENT",
-            "VIDEO_PLAYERS",
-            "DATING",
-            "COMICS"
+            "VIDEO_PLAYERS"
     ));
 
     // In-memory cache: packageName → category
