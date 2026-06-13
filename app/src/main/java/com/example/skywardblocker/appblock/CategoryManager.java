@@ -59,6 +59,8 @@ public class CategoryManager {
 
     // ── Public API ────────────────────────────────────────────────────
 
+    private static String lastCheckedPackage = "";
+
     /**
      * Returns true if the app is in a blocked category.
      * If the category is unknown, returns false and fires an async lookup.
@@ -70,7 +72,10 @@ public class CategoryManager {
         String category = cache.get(packageName);
         if (category != null) {
             boolean blocked = BLOCKED_CATEGORIES.contains(category);
-            Log.d(TAG, packageName + " → " + category + " → " + (blocked ? "BLOCKED" : "ALLOWED"));
+            if (!packageName.equals(lastCheckedPackage)) {
+                Log.d(TAG, packageName + " → " + category + " → " + (blocked ? "BLOCKED" : "ALLOWED"));
+                lastCheckedPackage = packageName;
+            }
             return blocked;
         }
 

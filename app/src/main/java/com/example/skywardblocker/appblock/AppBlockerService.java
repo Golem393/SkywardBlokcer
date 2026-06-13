@@ -31,6 +31,7 @@ public class AppBlockerService extends AccessibilityService {
     // Tracks whether a WarningActivity is currently showing.
     // Only cleared when the user explicitly dismisses it.
     private static volatile boolean isWarningShowing = false;
+    private static String lastDroppedPackage = "";
 
     private DnsAutoSetupScript dnsAutoSetupScript;
 
@@ -87,7 +88,10 @@ public class AppBlockerService extends AccessibilityService {
         // If a WarningActivity is already showing, drop all events.
         // This is the key fix: we don't re-trigger while warning is visible.
         if (isWarningShowing) {
-            Log.d(TAG, "DROP | WarningActivity already showing, ignoring pkg=" + pkg);
+            if (!pkg.equals(lastDroppedPackage)) {
+                Log.d(TAG, "DROP | WarningActivity already showing, ignoring pkg=" + pkg);
+                lastDroppedPackage = pkg;
+            }
             return;
         }
 
@@ -175,6 +179,7 @@ public class AppBlockerService extends AccessibilityService {
      */
     public static void onWarningDismissed() {
         isWarningShowing = false;
+        lastDroppedPackage = "";
     }
 
     @Override
