@@ -111,8 +111,23 @@ public class CategoryManager {
             return blocked;
         }
 
-        // Category unknown — don't block yet, resolve in background
+        // Category unknown — resolve in background
         resolveAndCache(context, packageName);
+
+        // TEMPORARY: Immediately block if the OS reports it as a game
+        try {
+            ApplicationInfo appInfo = context.getPackageManager().getApplicationInfo(packageName, 0);
+            if (appInfo.category == ApplicationInfo.CATEGORY_GAME) {
+                if (!packageName.equals(lastCheckedPackage)) {
+                    Log.d(TAG, packageName + " → OS_CATEGORY_GAME → BLOCKED (Waiting for API)");
+                    lastCheckedPackage = packageName;
+                }
+                return true;
+            }
+        } catch (PackageManager.NameNotFoundException e) {
+            // Ignore
+        }
+
         return false;
     }
 
