@@ -207,6 +207,15 @@ public class CategoryManager {
         Log.d(TAG, "Removed from cache: " + packageName);
     }
 
+    /**
+     * Clear the cache manually.
+     */
+    public static synchronized void clearCache(Context context) {
+        cache.clear();
+        saveCache(context);
+        Log.d(TAG, "Category cache cleared.");
+    }
+
     // ── Internal ──────────────────────────────────────────────────────
 
     private static void scanInstalledApps(Context context) {

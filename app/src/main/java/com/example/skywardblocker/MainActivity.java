@@ -29,7 +29,7 @@ public class MainActivity extends AppCompatActivity {
                 this::finish,
                 () -> handleActionClick(SetupViewState.Step.ENABLE_ACCESSIBILITY),
                 () -> handleActionClick(SetupViewState.Step.SETUP_DNS),
-                () -> handleActionClick(SetupViewState.Step.FINALIZE_API),
+                () -> com.example.skywardblocker.appblock.CategoryManager.clearCache(this),
                 () -> viewModel.onSkipApiClicked(),
                 () -> com.example.skywardblocker.appblock.CategoryManager.forceFetchPopularApps(this),
                 () -> com.example.skywardblocker.appblock.CategoryManager.printCache(),

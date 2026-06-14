@@ -20,7 +20,7 @@ fun SetupScreen(
     onCloseClicked: () -> Unit,
     onTestAccClicked: () -> Unit,
     onTestDnsClicked: () -> Unit,
-    onTestApiClicked: () -> Unit,
+    onClearCacheClicked: () -> Unit,
     onTestSkipApiClicked: () -> Unit,
     onTestFetchAppsClicked: () -> Unit,
     onTestPrintAppsClicked: () -> Unit,
@@ -59,7 +59,7 @@ fun SetupScreen(
                 SetupDebugButtons(
                     onTestAccClicked = onTestAccClicked,
                     onTestDnsClicked = onTestDnsClicked,
-                    onTestApiClicked = onTestApiClicked,
+                    onClearCacheClicked = onClearCacheClicked,
                     onTestSkipApiClicked = onTestSkipApiClicked,
                     onTestFetchAppsClicked = onTestFetchAppsClicked,
                     onTestPrintAppsClicked = onTestPrintAppsClicked,
@@ -147,7 +147,7 @@ private fun SetupActions(
 private fun SetupDebugButtons(
     onTestAccClicked: () -> Unit,
     onTestDnsClicked: () -> Unit,
-    onTestApiClicked: () -> Unit,
+    onClearCacheClicked: () -> Unit,
     onTestSkipApiClicked: () -> Unit,
     onTestFetchAppsClicked: () -> Unit,
     onTestPrintAppsClicked: () -> Unit,
@@ -165,7 +165,7 @@ private fun SetupDebugButtons(
         ) {
             TextButton(onClick = onTestAccClicked) { Text("T:Acc", fontSize = 10.sp, color = Color.Gray) }
             TextButton(onClick = onTestDnsClicked) { Text("T:DNS", fontSize = 10.sp, color = Color.Gray) }
-            TextButton(onClick = onTestApiClicked) { Text("T:API", fontSize = 10.sp, color = Color.Gray) }
+            TextButton(onClick = onClearCacheClicked) { Text("T:ClearCache", fontSize = 10.sp, color = Color.Gray) }
             TextButton(onClick = onTestSkipApiClicked) { Text("T:Skip", fontSize = 10.sp, color = Color.Gray) }
         }
         Row(
