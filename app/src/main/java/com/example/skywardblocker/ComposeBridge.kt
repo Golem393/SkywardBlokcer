@@ -19,7 +19,8 @@ object ComposeBridge {
         onTestSkipApiClicked: Runnable,
         onTestFetchAppsClicked: Runnable,
         onTestPrintAppsClicked: Runnable,
-        onTestResetWarningClicked: Runnable
+        onTestResetWarningClicked: Runnable,
+        onTestResetStateClicked: Runnable
     ) {
         composeView.setContent {
             val state by stateFlow.collectAsState()
@@ -34,7 +35,8 @@ object ComposeBridge {
                     onTestSkipApiClicked = { onTestSkipApiClicked.run() },
                     onTestFetchAppsClicked = { onTestFetchAppsClicked.run() },
                     onTestPrintAppsClicked = { onTestPrintAppsClicked.run() },
-                    onTestResetWarningClicked = { onTestResetWarningClicked.run() }
+                    onTestResetWarningClicked = { onTestResetWarningClicked.run() },
+                    onTestResetStateClicked = { onTestResetStateClicked.run() }
                 )
             }
         }
@@ -73,7 +75,8 @@ object ComposeBridge {
                 onTestSkipApiClicked = {},
                 onTestFetchAppsClicked = {},
                 onTestPrintAppsClicked = {},
-                onTestResetWarningClicked = {}
+                onTestResetWarningClicked = {},
+                onTestResetStateClicked = {}
             )
         }
     }

@@ -33,7 +33,11 @@ public class MainActivity extends AppCompatActivity {
                 () -> viewModel.onSkipApiClicked(),
                 () -> com.example.skywardblocker.appblock.CategoryManager.forceFetchPopularApps(this),
                 () -> com.example.skywardblocker.appblock.CategoryManager.printCache(),
-                () -> com.example.skywardblocker.appblock.AppBlockerService.onWarningDismissed()
+                () -> com.example.skywardblocker.appblock.AppBlockerService.onWarningDismissed(),
+                () -> {
+                    StateManager.resetState(this);
+                    viewModel.evaluateState();
+                }
         );
 
         // Restrict back button usage unless setup is complete (IDLE state)
