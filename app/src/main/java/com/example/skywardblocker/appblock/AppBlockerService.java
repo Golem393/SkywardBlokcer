@@ -195,7 +195,7 @@ public class AppBlockerService extends AccessibilityService {
             Log.d(TAG, "BLOCK | pkg=" + pkg + " | sending home then showing warning");
             lastBlockedTimes.put(pkg, now);
 
-            triggerBlock(pkg, "App Blocked", "This category of app is restricted by SkywardBlocker.", false);
+            triggerBlock(pkg, "App Blocked", "This category of app is restricted by Skyward.", false);
         }
     }
 

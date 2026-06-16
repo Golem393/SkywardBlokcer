@@ -64,7 +64,7 @@ public class SetupViewModel extends AndroidViewModel {
 
                 stateLiveData.setValue(new SetupViewState(
                         "Step 2: Auto Configure DNS",
-                        "SkywardBlocker will attempt to automatically configure DNS on your device. Click below to begin.",
+                        "Skyward will attempt to automatically configure DNS on your device. Click below to begin.",
                         "Try Auto Setup",
                         true,
                         false,

@@ -19,5 +19,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "SkywardBlocker"
+rootProject.name = "Skyward"
 include(":app")
