@@ -50,11 +50,16 @@ public class MdmApiClient {
     private static final long RETRY_DELAY_MS = 2000;
 
     private static String doRequest(Context context, String method, String path, String jsonBody) throws Exception {
+        return doRequest(context, method, path, jsonBody, true);
+    }
+
+    private static String doRequest(Context context, String method, String path, String jsonBody, boolean allowRetries) throws Exception {
         URL url = new URL(getBaseUrl(context) + path);
+        int maxAttempts = allowRetries ? MAX_RETRIES : 1;
         int attempt = 0;
         Exception lastException = null;
 
-        while (attempt < MAX_RETRIES) {
+        while (attempt < maxAttempts) {
             attempt++;
             try {
                 Log.d(TAG, method + " " + url + " (Attempt " + attempt + " of " + MAX_RETRIES + ")");
@@ -92,7 +97,7 @@ public class MdmApiClient {
             } catch (Exception e) {
                 lastException = e;
                 Log.w(TAG, "Request failed " + method + " " + path + ": " + e.getMessage());
-                if (attempt < MAX_RETRIES) {
+                if (attempt < maxAttempts) {
                     try {
                         Thread.sleep(RETRY_DELAY_MS);
                     } catch (InterruptedException ie) {
@@ -103,7 +108,7 @@ public class MdmApiClient {
             }
         }
         
-        throw new Exception("Request failed after " + MAX_RETRIES + " attempts. Last error: " + lastException.getMessage(), lastException);
+        throw new Exception("Request failed after " + maxAttempts + " attempts. Last error: " + lastException.getMessage(), lastException);
     }
 
     // ── Existing MDM methods (refactored to use doRequest) ────────────
@@ -190,6 +195,46 @@ public class MdmApiClient {
             } catch (Exception e) {
                 Log.e(TAG, "fetchAppCategory failed for " + packageName, e);
                 callback.onError(e.getMessage());
+            }
+        }).start();
+    }
+
+
+    public static void authenticateSetup(Context context, String email, String password, ApiCallback<Boolean> callback) {
+        new Thread(() -> {
+            try {
+                JSONObject json = new JSONObject();
+                json.put("email", email);
+                json.put("password", password);
+
+                // Call doRequest with allowRetries = false
+                String response = doRequest(context, "POST", "/setup-auth", json.toString(), false);
+                
+                JSONObject root = new JSONObject(response);
+                boolean success = root.optBoolean("success", false);
+
+                if (success) {
+                    callback.onSuccess(true);
+                } else {
+                    String error = root.optString("errorMessage", "Authentication failed");
+                    callback.onError(error);
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "authenticateSetup failed", e);
+                String msg = e.getMessage();
+                
+                // If it's an HTTP error from doRequest, it might contain a JSON body with the error message
+                try {
+                    if (msg != null && msg.contains("{")) {
+                        String jsonPart = msg.substring(msg.indexOf("{"));
+                        JSONObject errorJson = new JSONObject(jsonPart);
+                        if (errorJson.has("errorMessage")) {
+                            msg = errorJson.getString("errorMessage");
+                        }
+                    }
+                } catch (Exception ignored) {}
+                
+                callback.onError(msg != null ? msg : "Unknown error");
             }
         }).start();
     }

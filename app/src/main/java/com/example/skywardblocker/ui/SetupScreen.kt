@@ -4,6 +4,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -17,16 +21,20 @@ import com.example.skywardblocker.SetupViewState
 fun SetupScreen(
     state: SetupViewState,
     onActionClicked: () -> Unit,
+    onLoginClicked: (String, String) -> Unit,
     onCloseClicked: () -> Unit,
     onTestAccClicked: () -> Unit,
     onTestDnsClicked: () -> Unit,
     onClearCacheClicked: () -> Unit,
     onTestSkipApiClicked: () -> Unit,
-    onTestFetchAppsClicked: () -> Unit,
     onTestPrintAppsClicked: () -> Unit,
     onTestResetWarningClicked: () -> Unit,
-    onTestResetStateClicked: () -> Unit
+    onTestResetStateClicked: () -> Unit,
+    onTestLoginClicked: () -> Unit
 ) {
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = Color.White
@@ -44,6 +52,26 @@ fun SetupScreen(
                 message = state.message ?: ""
             )
 
+            if (state.currentStep == SetupViewState.Step.LOGIN) {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedTextField(
+                        value = email,
+                        onValueChange = { email = it },
+                        label = { Text("Email") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = password,
+                        onValueChange = { password = it },
+                        label = { Text("Password") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -52,7 +80,13 @@ fun SetupScreen(
                     actionButtonText = state.actionButtonText ?: "",
                     isActionButtonVisible = state.isActionButtonVisible,
                     isCloseButtonVisible = state.isCloseButtonVisible,
-                    onActionClicked = onActionClicked,
+                    onActionClicked = {
+                        if (state.currentStep == SetupViewState.Step.LOGIN) {
+                            onLoginClicked(email, password)
+                        } else {
+                            onActionClicked()
+                        }
+                    },
                     onCloseClicked = onCloseClicked
                 )
 
@@ -61,10 +95,10 @@ fun SetupScreen(
                     onTestDnsClicked = onTestDnsClicked,
                     onClearCacheClicked = onClearCacheClicked,
                     onTestSkipApiClicked = onTestSkipApiClicked,
-                    onTestFetchAppsClicked = onTestFetchAppsClicked,
                     onTestPrintAppsClicked = onTestPrintAppsClicked,
                     onTestResetWarningClicked = onTestResetWarningClicked,
-                    onTestResetStateClicked = onTestResetStateClicked
+                    onTestResetStateClicked = onTestResetStateClicked,
+                    onTestLoginClicked = onTestLoginClicked
                 )
             }
         }
@@ -149,10 +183,10 @@ private fun SetupDebugButtons(
     onTestDnsClicked: () -> Unit,
     onClearCacheClicked: () -> Unit,
     onTestSkipApiClicked: () -> Unit,
-    onTestFetchAppsClicked: () -> Unit,
     onTestPrintAppsClicked: () -> Unit,
     onTestResetWarningClicked: () -> Unit,
-    onTestResetStateClicked: () -> Unit
+    onTestResetStateClicked: () -> Unit,
+    onTestLoginClicked: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -172,7 +206,7 @@ private fun SetupDebugButtons(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            TextButton(onClick = onTestFetchAppsClicked) { Text("T:FetchApps", fontSize = 10.sp, color = Color.Gray) }
+            TextButton(onClick = onTestLoginClicked) { Text("T:Login", fontSize = 10.sp, color = Color.Gray) }
             TextButton(onClick = onTestPrintAppsClicked) { Text("T:PrintApps", fontSize = 10.sp, color = Color.Gray) }
             TextButton(onClick = onTestResetWarningClicked) { Text("T:ResetLock", fontSize = 10.sp, color = Color.Gray) }
             TextButton(onClick = onTestResetStateClicked) { Text("T:ResetState", fontSize = 10.sp, color = Color.Gray) }

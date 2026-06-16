@@ -35,6 +35,17 @@ public class SetupViewModel extends AndroidViewModel {
         StateManager.AppState currentState = StateManager.getState(app);
 
         switch (currentState) {
+            case LOGIN_SCREEN:
+                stateLiveData.setValue(new SetupViewState(
+                        "Step 1: Authentication",
+                        "Please sign in to continue setup.",
+                        "Login",
+                        true,
+                        false,
+                        SetupViewState.Step.LOGIN
+                ));
+                break;
+
             case START_SCREEN:
             case ACCESSIBILITY_SCREEN:
                 // Check if the condition is already met. If yes, auto-advance.
@@ -45,7 +56,7 @@ public class SetupViewModel extends AndroidViewModel {
                 }
 
                 stateLiveData.setValue(new SetupViewState(
-                        "Step 1: Action Required",
+                        "Step 2: Action Required",
                         "Please enable Accessibility Options for Skyward Blocker.",
                         "Open Settings",
                         true,
@@ -63,7 +74,7 @@ public class SetupViewModel extends AndroidViewModel {
                 }
 
                 stateLiveData.setValue(new SetupViewState(
-                        "Step 2: Auto Configure DNS",
+                        "Step 3: Auto Configure DNS",
                         "Skyward will attempt to automatically configure DNS on your device. Click below to begin.",
                         "Try Auto Setup",
                         true,
@@ -81,7 +92,7 @@ public class SetupViewModel extends AndroidViewModel {
                 }
 
                 stateLiveData.setValue(new SetupViewState(
-                        "Step 2: Manual DNS Setup",
+                        "Step 3: Manual DNS Setup",
                         "Automatic setup failed or your device is unsupported. Please click below to open settings and configure Private DNS manually.",
                         "Open Settings",
                         true,
@@ -103,7 +114,7 @@ public class SetupViewModel extends AndroidViewModel {
 
             case EXIT_KIOSK: // Using this as your API / Finalize step based on your enum
                 stateLiveData.setValue(new SetupViewState(
-                        "Step 3: Finalize",
+                        "Step 4: Finalize",
                         "Click below to register your device and finalize setup.",
                         "Complete Setup",
                         true,
@@ -131,6 +142,46 @@ public class SetupViewModel extends AndroidViewModel {
         StateManager.nextState(getApplication());
         evaluateState();
     }*/
+
+    public void onLoginClicked(String email, String password) {
+        if (isProcessingApi) return;
+
+        isProcessingApi = true;
+        stateLiveData.setValue(new SetupViewState(
+                "Authenticating...",
+                "Please wait, communicating with MDM server...",
+                "Processing...",
+                true,
+                false,
+                SetupViewState.Step.LOGIN
+        ));
+
+        MdmApiClient.authenticateSetup(getApplication(), email, password, new MdmApiClient.ApiCallback<Boolean>() {
+            @Override
+            public void onSuccess(Boolean result) {
+                new Handler(Looper.getMainLooper()).post(() -> {
+                    isProcessingApi = false;
+                    StateManager.nextState(getApplication());
+                    evaluateState();
+                });
+            }
+
+            @Override
+            public void onError(String errorMessage) {
+                new Handler(Looper.getMainLooper()).post(() -> {
+                    isProcessingApi = false;
+                    stateLiveData.setValue(new SetupViewState(
+                            "Login Failed",
+                            errorMessage,
+                            "Login",
+                            true,
+                            false,
+                            SetupViewState.Step.LOGIN
+                    ));
+                });
+            }
+        });
+    }
 
     // Called by MainActivity when the API button is clicked
     public void onFinalizeClicked() {

@@ -12,15 +12,16 @@ object ComposeBridge {
     fun setup(
         composeView: ComposeView,
         onActionClicked: java.util.function.Consumer<SetupViewState.Step>,
+        onLoginClicked: java.util.function.BiConsumer<String, String>,
         onCloseClicked: Runnable,
         onTestAccClicked: Runnable,
         onTestDnsClicked: Runnable,
         onClearCacheClicked: Runnable,
         onTestSkipApiClicked: Runnable,
-        onTestFetchAppsClicked: Runnable,
         onTestPrintAppsClicked: Runnable,
         onTestResetWarningClicked: Runnable,
-        onTestResetStateClicked: Runnable
+        onTestResetStateClicked: Runnable,
+        onTestLoginClicked: Runnable
     ) {
         composeView.setContent {
             val state by stateFlow.collectAsState()
@@ -28,15 +29,16 @@ object ComposeBridge {
                 SetupScreen(
                     state = currentState,
                     onActionClicked = { onActionClicked.accept(currentState.currentStep) },
+                    onLoginClicked = { e, p -> onLoginClicked.accept(e, p) },
                     onCloseClicked = { onCloseClicked.run() },
                     onTestAccClicked = { onTestAccClicked.run() },
                     onTestDnsClicked = { onTestDnsClicked.run() },
                     onClearCacheClicked = { onClearCacheClicked.run() },
                     onTestSkipApiClicked = { onTestSkipApiClicked.run() },
-                    onTestFetchAppsClicked = { onTestFetchAppsClicked.run() },
                     onTestPrintAppsClicked = { onTestPrintAppsClicked.run() },
                     onTestResetWarningClicked = { onTestResetWarningClicked.run() },
-                    onTestResetStateClicked = { onTestResetStateClicked.run() }
+                    onTestResetStateClicked = { onTestResetStateClicked.run() },
+                    onTestLoginClicked = { onTestLoginClicked.run() }
                 )
             }
         }
@@ -68,15 +70,16 @@ object ComposeBridge {
             SetupScreen(
                 state = state,
                 onActionClicked = { onActionClicked.run() },
+                onLoginClicked = { _, _ -> },
                 onCloseClicked = { onCloseClicked.run() },
                 onTestAccClicked = {},
                 onTestDnsClicked = {},
                 onClearCacheClicked = {},
                 onTestSkipApiClicked = {},
-                onTestFetchAppsClicked = {},
                 onTestPrintAppsClicked = {},
                 onTestResetWarningClicked = {},
-                onTestResetStateClicked = {}
+                onTestResetStateClicked = {},
+                onTestLoginClicked = {}
             )
         }
     }

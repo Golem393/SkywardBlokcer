@@ -10,6 +10,7 @@ public class SetupViewState {
     public final Step currentStep;
 
     public enum Step {
+        LOGIN,
         ENABLE_ACCESSIBILITY,
         SETUP_DNS,
         SETUP_DNS_MANUAL,

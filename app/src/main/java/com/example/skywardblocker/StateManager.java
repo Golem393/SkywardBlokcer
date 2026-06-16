@@ -8,6 +8,7 @@ public class StateManager {
     private static final String KEY_APP_STATE = "app_state";
 
     public enum AppState {
+        LOGIN_SCREEN,
         START_SCREEN,
         ACCESSIBILITY_SCREEN,
         DNS_SCREEN,
@@ -56,7 +57,7 @@ public class StateManager {
                 context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
 
         prefs.edit()
-                .putString(KEY_APP_STATE, AppState.START_SCREEN.name())
+                .putString(KEY_APP_STATE, AppState.LOGIN_SCREEN.name())
                 .apply();
     }
 
@@ -65,7 +66,7 @@ public class StateManager {
                 context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
 
         String stateName =
-                prefs.getString(KEY_APP_STATE, AppState.START_SCREEN.name());
+                prefs.getString(KEY_APP_STATE, AppState.LOGIN_SCREEN.name());
 
         return AppState.valueOf(stateName);
     }
