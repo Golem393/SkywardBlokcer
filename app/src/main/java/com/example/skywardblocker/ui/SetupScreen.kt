@@ -25,15 +25,7 @@ fun SetupScreen(
     state: SetupViewState,
     onActionClicked: () -> Unit,
     onLoginClicked: (String, String) -> Unit,
-    onCloseClicked: () -> Unit,
-    onTestAccClicked: () -> Unit,
-    onTestDnsClicked: () -> Unit,
-    onClearCacheClicked: () -> Unit,
-    onTestSkipApiClicked: () -> Unit,
-    onTestPrintAppsClicked: () -> Unit,
-    onTestResetWarningClicked: () -> Unit,
-    onTestResetStateClicked: () -> Unit,
-    onTestLoginClicked: () -> Unit
+    onCloseClicked: () -> Unit
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -93,17 +85,6 @@ fun SetupScreen(
                         }
                     },
                     onCloseClicked = onCloseClicked
-                )
-
-                SetupDebugButtons(
-                    onTestAccClicked = onTestAccClicked,
-                    onTestDnsClicked = onTestDnsClicked,
-                    onClearCacheClicked = onClearCacheClicked,
-                    onTestSkipApiClicked = onTestSkipApiClicked,
-                    onTestPrintAppsClicked = onTestPrintAppsClicked,
-                    onTestResetWarningClicked = onTestResetWarningClicked,
-                    onTestResetStateClicked = onTestResetStateClicked,
-                    onTestLoginClicked = onTestLoginClicked
                 )
             }
         }
@@ -178,43 +159,6 @@ private fun SetupActions(
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("CLOSE APP", color = Color(0xFF1B2A3C), fontWeight = FontWeight.W600)
-        }
-    }
-}
-
-@Composable
-private fun SetupDebugButtons(
-    onTestAccClicked: () -> Unit,
-    onTestDnsClicked: () -> Unit,
-    onClearCacheClicked: () -> Unit,
-    onTestSkipApiClicked: () -> Unit,
-    onTestPrintAppsClicked: () -> Unit,
-    onTestResetWarningClicked: () -> Unit,
-    onTestResetStateClicked: () -> Unit,
-    onTestLoginClicked: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 24.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            TextButton(onClick = onTestAccClicked) { Text("T:Acc", fontSize = 10.sp, color = Color.Gray) }
-            TextButton(onClick = onTestDnsClicked) { Text("T:DNS", fontSize = 10.sp, color = Color.Gray) }
-            TextButton(onClick = onClearCacheClicked) { Text("T:ClearCache", fontSize = 10.sp, color = Color.Gray) }
-            TextButton(onClick = onTestSkipApiClicked) { Text("T:Skip", fontSize = 10.sp, color = Color.Gray) }
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            TextButton(onClick = onTestLoginClicked) { Text("T:Login", fontSize = 10.sp, color = Color.Gray) }
-            TextButton(onClick = onTestPrintAppsClicked) { Text("T:PrintApps", fontSize = 10.sp, color = Color.Gray) }
-            TextButton(onClick = onTestResetWarningClicked) { Text("T:ResetLock", fontSize = 10.sp, color = Color.Gray) }
-            TextButton(onClick = onTestResetStateClicked) { Text("T:ResetState", fontSize = 10.sp, color = Color.Gray) }
         }
     }
 }

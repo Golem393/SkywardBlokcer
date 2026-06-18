@@ -13,15 +13,7 @@ object ComposeBridge {
         composeView: ComposeView,
         onActionClicked: java.util.function.Consumer<SetupViewState.Step>,
         onLoginClicked: java.util.function.BiConsumer<String, String>,
-        onCloseClicked: Runnable,
-        onTestAccClicked: Runnable,
-        onTestDnsClicked: Runnable,
-        onClearCacheClicked: Runnable,
-        onTestSkipApiClicked: Runnable,
-        onTestPrintAppsClicked: Runnable,
-        onTestResetWarningClicked: Runnable,
-        onTestResetStateClicked: Runnable,
-        onTestLoginClicked: Runnable
+        onCloseClicked: Runnable
     ) {
         composeView.setContent {
             val state by stateFlow.collectAsState()
@@ -30,15 +22,7 @@ object ComposeBridge {
                     state = currentState,
                     onActionClicked = { onActionClicked.accept(currentState.currentStep) },
                     onLoginClicked = { e, p -> onLoginClicked.accept(e, p) },
-                    onCloseClicked = { onCloseClicked.run() },
-                    onTestAccClicked = { onTestAccClicked.run() },
-                    onTestDnsClicked = { onTestDnsClicked.run() },
-                    onClearCacheClicked = { onClearCacheClicked.run() },
-                    onTestSkipApiClicked = { onTestSkipApiClicked.run() },
-                    onTestPrintAppsClicked = { onTestPrintAppsClicked.run() },
-                    onTestResetWarningClicked = { onTestResetWarningClicked.run() },
-                    onTestResetStateClicked = { onTestResetStateClicked.run() },
-                    onTestLoginClicked = { onTestLoginClicked.run() }
+                    onCloseClicked = { onCloseClicked.run() }
                 )
             }
         }
@@ -71,15 +55,7 @@ object ComposeBridge {
                 state = state,
                 onActionClicked = { onActionClicked.run() },
                 onLoginClicked = { _, _ -> },
-                onCloseClicked = { onCloseClicked.run() },
-                onTestAccClicked = {},
-                onTestDnsClicked = {},
-                onClearCacheClicked = {},
-                onTestSkipApiClicked = {},
-                onTestPrintAppsClicked = {},
-                onTestResetWarningClicked = {},
-                onTestResetStateClicked = {},
-                onTestLoginClicked = {}
+                onCloseClicked = { onCloseClicked.run() }
             )
         }
     }

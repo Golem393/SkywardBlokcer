@@ -27,18 +27,7 @@ public class MainActivity extends AppCompatActivity {
                 composeView,
                 this::handleActionClick,
                 viewModel::onLoginClicked,
-                this::finish,
-                () -> handleActionClick(SetupViewState.Step.ENABLE_ACCESSIBILITY),
-                () -> handleActionClick(SetupViewState.Step.SETUP_DNS),
-                () -> com.example.skywardblocker.appblock.CategoryManager.clearCache(this),
-                () -> viewModel.onSkipApiClicked(),
-                () -> com.example.skywardblocker.appblock.CategoryManager.printCache(),
-                () -> com.example.skywardblocker.appblock.AppBlockerService.onWarningDismissed(),
-                () -> {
-                    StateManager.resetState(this);
-                    viewModel.evaluateState();
-                },
-                () -> viewModel.onLoginClicked("test@example.com", "password")
+                this::finish
         );
 
         // Restrict back button usage unless setup is complete (IDLE state)

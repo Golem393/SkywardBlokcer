@@ -248,12 +248,7 @@ public class SetupViewModel extends AndroidViewModel {
         });
     }
 
-    public void onSkipApiClicked() {
-        // Skip the API call and directly advance state for testing purposes
-        StateManager.setMemberId(getApplication(), "dummy-skipped-id");
-        StateManager.nextState(getApplication());
-        evaluateState();
-    }
+
 
     private String getMdmProvidedSerialNumber(Context context) {
         RestrictionsManager restrictionsManager =
