@@ -19,6 +19,32 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import com.example.skywardblocker.SetupViewState
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import com.example.skywardblocker.R
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+
+val InterFontFamily = FontFamily(Font(R.font.inter))
+
+private val defaultTypography = Typography()
+val InterTypography = Typography(
+    displayLarge = defaultTypography.displayLarge.copy(fontFamily = InterFontFamily),
+    displayMedium = defaultTypography.displayMedium.copy(fontFamily = InterFontFamily),
+    displaySmall = defaultTypography.displaySmall.copy(fontFamily = InterFontFamily),
+    headlineLarge = defaultTypography.headlineLarge.copy(fontFamily = InterFontFamily),
+    headlineMedium = defaultTypography.headlineMedium.copy(fontFamily = InterFontFamily),
+    headlineSmall = defaultTypography.headlineSmall.copy(fontFamily = InterFontFamily),
+    titleLarge = defaultTypography.titleLarge.copy(fontFamily = InterFontFamily),
+    titleMedium = defaultTypography.titleMedium.copy(fontFamily = InterFontFamily),
+    titleSmall = defaultTypography.titleSmall.copy(fontFamily = InterFontFamily),
+    bodyLarge = defaultTypography.bodyLarge.copy(fontFamily = InterFontFamily),
+    bodyMedium = defaultTypography.bodyMedium.copy(fontFamily = InterFontFamily),
+    bodySmall = defaultTypography.bodySmall.copy(fontFamily = InterFontFamily),
+    labelLarge = defaultTypography.labelLarge.copy(fontFamily = InterFontFamily),
+    labelMedium = defaultTypography.labelMedium.copy(fontFamily = InterFontFamily),
+    labelSmall = defaultTypography.labelSmall.copy(fontFamily = InterFontFamily)
+)
 
 @Composable
 fun SetupScreen(
@@ -30,62 +56,64 @@ fun SetupScreen(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = Color.White
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .safeDrawingPadding()
-                .padding(20.dp),
-            verticalArrangement = Arrangement.SpaceBetween,
-            horizontalAlignment = Alignment.CenterHorizontally
+    MaterialTheme(typography = InterTypography) {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = Color.White
         ) {
-            SetupHeader(
-                title = state.title ?: "",
-                message = state.message ?: ""
-            )
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .safeDrawingPadding()
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.SpaceBetween,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                SetupHeader(
+                    title = state.title ?: "",
+                    message = state.message ?: ""
+                )
 
-            if (state.currentStep == SetupViewState.Step.LOGIN) {
+                if (state.currentStep == SetupViewState.Step.LOGIN) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = email,
+                            onValueChange = { email = it },
+                            label = { Text("Email") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedTextField(
+                            value = password,
+                            onValueChange = { password = it },
+                            label = { Text("Password") },
+                            modifier = Modifier.fillMaxWidth(),
+                            visualTransformation = PasswordVisualTransformation(),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+                        )
+                    }
+                }
+
                 Column(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    OutlinedTextField(
-                        value = email,
-                        onValueChange = { email = it },
-                        label = { Text("Email") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = password,
-                        onValueChange = { password = it },
-                        label = { Text("Password") },
-                        modifier = Modifier.fillMaxWidth(),
-                        visualTransformation = PasswordVisualTransformation(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+                    SetupActions(
+                        actionButtonText = state.actionButtonText ?: "",
+                        isActionButtonVisible = state.isActionButtonVisible,
+                        isCloseButtonVisible = state.isCloseButtonVisible,
+                        onActionClicked = {
+                            if (state.currentStep == SetupViewState.Step.LOGIN) {
+                                onLoginClicked(email, password)
+                            } else {
+                                onActionClicked()
+                            }
+                        },
+                        onCloseClicked = onCloseClicked
                     )
                 }
-            }
-
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                SetupActions(
-                    actionButtonText = state.actionButtonText ?: "",
-                    isActionButtonVisible = state.isActionButtonVisible,
-                    isCloseButtonVisible = state.isCloseButtonVisible,
-                    onActionClicked = {
-                        if (state.currentStep == SetupViewState.Step.LOGIN) {
-                            onLoginClicked(email, password)
-                        } else {
-                            onActionClicked()
-                        }
-                    },
-                    onCloseClicked = onCloseClicked
-                )
             }
         }
     }
@@ -96,10 +124,10 @@ private fun SetupHeader(title: String, message: String) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(
-            text = "SKYWARD",
-            fontSize = 16.sp,
-            color = Color.Black
+        Image(
+            painter = painterResource(id = R.mipmap.ic_launcher_foreground),
+            contentDescription = "App Logo",
+            modifier = Modifier.size(80.dp)
         )
         
         Text(
@@ -146,7 +174,7 @@ private fun SetupActions(
             shape = RoundedCornerShape(30.dp)
         ) {
             Text(
-                text = actionButtonText.uppercase(),
+                text = actionButtonText,
                 fontWeight = FontWeight.W600,
                 fontSize = 16.sp
             )
@@ -158,7 +186,7 @@ private fun SetupActions(
             onClick = onCloseClicked,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("CLOSE APP", color = Color(0xFF1B2A3C), fontWeight = FontWeight.W600)
+            Text("Close app", color = Color(0xFF1B2A3C), fontWeight = FontWeight.W600)
         }
     }
 }

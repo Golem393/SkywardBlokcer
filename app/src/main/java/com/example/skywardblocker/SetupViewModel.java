@@ -37,8 +37,8 @@ public class SetupViewModel extends AndroidViewModel {
         switch (currentState) {
             case LOGIN_SCREEN:
                 stateLiveData.setValue(new SetupViewState(
-                        "Step 1: Authentication",
-                        "Please sign in to continue setup.",
+                        "Step 1: Login",
+                        "Please sign in to continue the setup.",
                         "Login",
                         true,
                         false,
@@ -56,8 +56,8 @@ public class SetupViewModel extends AndroidViewModel {
                 }
 
                 stateLiveData.setValue(new SetupViewState(
-                        "Step 2: Action Required",
-                        "Please enable Accessibility Options for Skyward Blocker.",
+                        "Step 2: Accessibility",
+                        "Please turn on Accessibility settings for Skyward.",
                         "Open Settings",
                         true,
                         false,
@@ -74,7 +74,7 @@ public class SetupViewModel extends AndroidViewModel {
                 }
 
                 stateLiveData.setValue(new SetupViewState(
-                        "Step 3: Auto Configure DNS",
+                        "Step 3: DNS",
                         "Skyward will attempt to automatically configure DNS on your device. Click below to begin.",
                         "Try Auto Setup",
                         true,
@@ -92,8 +92,8 @@ public class SetupViewModel extends AndroidViewModel {
                 }
 
                 stateLiveData.setValue(new SetupViewState(
-                        "Step 3: Manual DNS Setup",
-                        "Automatic setup failed or your device is unsupported. Please click below to open settings and configure Private DNS manually.",
+                        "Step 3: DNS",
+                        "Automatic setup failed. Please click below to open the settings and configure Private DNS manually.",
                         "Open Settings",
                         true,
                         false,
@@ -116,7 +116,7 @@ public class SetupViewModel extends AndroidViewModel {
                 stateLiveData.setValue(new SetupViewState(
                         "Step 4: Finalize",
                         "Click below to register your device and finalize setup.",
-                        "Complete Setup",
+                        "Complete setup",
                         true,
                         false,
                         SetupViewState.Step.FINALIZE_API
@@ -125,8 +125,8 @@ public class SetupViewModel extends AndroidViewModel {
 
             case BLOCKING:
                 stateLiveData.setValue(new SetupViewState(
-                        "Skyward Blocker",
-                        "All setup steps are complete! Service is active and running securely.",
+                        "Skyward is ready",
+                        "All steps are complete! Skyward is active and running.",
                         null,
                         false,
                         true,
@@ -149,7 +149,7 @@ public class SetupViewModel extends AndroidViewModel {
         isProcessingApi = true;
         stateLiveData.setValue(new SetupViewState(
                 "Authenticating...",
-                "Please wait, communicating with MDM server...",
+                "Please wait...",
                 "Processing...",
                 true,
                 false,
@@ -208,7 +208,7 @@ public class SetupViewModel extends AndroidViewModel {
         isProcessingApi = true;
         stateLiveData.setValue(new SetupViewState(
                 "Finalizing...",
-                "Please wait, communicating with MDM server...",
+                "Please wait...",
                 "Processing...",
                 true,
                 false,
@@ -237,7 +237,7 @@ public class SetupViewModel extends AndroidViewModel {
                     // Push an error state so the user knows it failed
                     stateLiveData.setValue(new SetupViewState(
                             "Network Error",
-                            "Failed to reach MDM server. Check connection and try again.\nError: " + errorMessage,
+                            "Failed to connect. Check your connection and try again.\nError: " + errorMessage,
                             "Retry",
                             true,
                             false,
