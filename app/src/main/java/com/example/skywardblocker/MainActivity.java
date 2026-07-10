@@ -27,7 +27,8 @@ public class MainActivity extends AppCompatActivity {
                 composeView,
                 this::handleActionClick,
                 viewModel::onLoginClicked,
-                this::finish
+                this::finish,
+                viewModel::onBypassClicked
         );
 
         // Restrict back button usage unless setup is complete (IDLE state)

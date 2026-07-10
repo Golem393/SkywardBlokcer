@@ -15,9 +15,13 @@ import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
 public class MdmApiClient {
 
     private static final String TAG = "SkywardDebug";
+    private static final ExecutorService executorService = Executors.newFixedThreadPool(4);
 
     // ── Generic callback ──────────────────────────────────────────────
 
@@ -35,8 +39,30 @@ public class MdmApiClient {
     // ── Dynamic Config Fetchers ───────────────────────────────────────
 
     private static String getBaseUrl(Context context) {
+        // --- HARDCODED FOR LOCAL TESTING ---
+        // Uncomment the below line to force all traffic to your local computer:
+        return "http://127.0.0.1:8000/api";
+
+        /*
         RestrictionsManager rm = (RestrictionsManager) context.getSystemService(Context.RESTRICTIONS_SERVICE);
-        return rm.getApplicationRestrictions().getString("mdm_base_url");
+        String url = null;
+        if (rm != null && rm.getApplicationRestrictions() != null) {
+            url = rm.getApplicationRestrictions().getString("mdm_base_url");
+        }
+        if (url != null && !url.isEmpty() && !url.endsWith("/api")) {
+            if (url.endsWith("/")) {
+                url += "api";
+            } else {
+                url += "/api";
+            }
+        }
+        // Fallback for local testing when MDM restrictions aren't applied
+        if (url == null || url.isEmpty()) {
+            url = "http://192.168.45.154:8000/api";
+            Log.w(TAG, "No MDM base URL found. Using fallback: " + url);
+        }
+        return url;
+        */
     }
 
     private static String getApiKey(Context context) {
@@ -114,7 +140,7 @@ public class MdmApiClient {
     // ── Existing MDM methods (refactored to use doRequest) ────────────
 
     public static void finalizeDeviceSetup(Context context, String targetSerial, MdmCallback callback) {
-        new Thread(() -> {
+        executorService.submit(() -> {
             try {
                 // Step 1: Get kiosk devices
                 String devicesJson = doRequest(context, "GET", "/kiosk-devices", null);
@@ -147,10 +173,8 @@ public class MdmApiClient {
                 Log.e(TAG, "finalizeDeviceSetup failed", e);
                 callback.onError(e.getMessage());
             }
-        }).start();
+        });
     }
-
-
 
     // ── New category endpoints ────────────────────────────────────────
 
@@ -159,7 +183,7 @@ public class MdmApiClient {
      * Expected response: { "apps": [ {"packageName":"...", "category":"GAME"}, ... ] }
      */
     public static void fetchPopularApps(Context context, ApiCallback<Map<String, String>> callback) {
-        new Thread(() -> {
+        executorService.submit(() -> {
             try {
                 String json = doRequest(context, "GET", "/popular-apps", null);
                 JSONObject root = new JSONObject(json);
@@ -176,7 +200,7 @@ public class MdmApiClient {
                 Log.e(TAG, "fetchPopularApps failed", e);
                 callback.onError(e.getMessage());
             }
-        }).start();
+        });
     }
 
     /**
@@ -184,7 +208,7 @@ public class MdmApiClient {
      * Expected response: { "packageName":"...", "category":"SOCIAL" }
      */
     public static void fetchAppCategory(Context context, String packageName, ApiCallback<String> callback) {
-        new Thread(() -> {
+        executorService.submit(() -> {
             try {
                 String body = "{\"packageName\": \"" + packageName + "\"}";
                 String json = doRequest(context, "POST", "/app-category", body);
@@ -196,12 +220,31 @@ public class MdmApiClient {
                 Log.e(TAG, "fetchAppCategory failed for " + packageName, e);
                 callback.onError(e.getMessage());
             }
-        }).start();
+        });
     }
 
+    /**
+     * Looks up a single domain's category.
+     * Expected response: { "domain":"...", "category":"SOCIAL", "confidence": 97 }
+     */
+    public static void fetchDomainCategory(Context context, String domain, ApiCallback<String> callback) {
+        executorService.submit(() -> {
+            try {
+                String body = "{\"domain\": \"" + domain + "\"}";
+                String json = doRequest(context, "POST", "/domain-category", body);
+                JSONObject root = new JSONObject(json);
+                String category = root.getString("category");
+                Log.d(TAG, "Resolved domain " + domain + " → " + category);
+                callback.onSuccess(category);
+            } catch (Exception e) {
+                Log.e(TAG, "fetchDomainCategory failed for " + domain, e);
+                callback.onError(e.getMessage());
+            }
+        });
+    }
 
     public static void authenticateSetup(Context context, String email, String password, ApiCallback<Boolean> callback) {
-        new Thread(() -> {
+        executorService.submit(() -> {
             try {
                 JSONObject json = new JSONObject();
                 json.put("email", email);
@@ -240,6 +283,6 @@ public class MdmApiClient {
                 
                 callback.onError(msg != null ? msg : "Unknown error");
             }
-        }).start();
+        });
     }
 }

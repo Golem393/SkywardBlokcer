@@ -39,19 +39,30 @@ public class WarningActivity extends AppCompatActivity {
         String title = getIntent().getStringExtra("title");
         String message = getIntent().getStringExtra("message");
         boolean isSettings = getIntent().getBooleanExtra("is_settings", false);
+        boolean isWebsite = getIntent().getBooleanExtra("is_website", false);
 
         Runnable onActionClicked = () -> {
-            Intent intent = new Intent(Intent.ACTION_DELETE);
-            intent.setData(Uri.parse("package:" + blockedPackage));
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            startActivity(intent);
-            finishAndRemoveTask();
+            if (isWebsite) {
+                Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("http://www.google.com"));
+                browserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(browserIntent);
+                finishAndRemoveTask();
+            } else {
+                Intent intent = new Intent(Intent.ACTION_DELETE);
+                intent.setData(Uri.parse("package:" + blockedPackage));
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(intent);
+                finishAndRemoveTask();
+            }
         };
+
+        String actionLabel = isWebsite ? "Open New Tab" : "Uninstall App";
 
         com.example.skywardblocker.ComposeBridge.setupWarning(
                 composeView,
                 title != null ? title : "",
                 message != null ? message : "",
+                actionLabel,
                 !isSettings,
                 onActionClicked,
                 this::dismissAndGoHome

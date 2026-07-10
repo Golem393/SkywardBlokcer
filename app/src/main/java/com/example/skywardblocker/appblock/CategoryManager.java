@@ -54,6 +54,8 @@ public class CategoryManager {
 
     // Packages currently being resolved (prevent duplicate API calls)
     private static final Set<String> pendingLookups = new HashSet<>();
+    private static final Map<String, Long> failedLookups = new HashMap<>();
+    private static final long RETRY_COOLDOWN_MS = 60000; // 1 minute
 
     // ── Public API ────────────────────────────────────────────────────
 
@@ -140,7 +142,6 @@ public class CategoryManager {
 
         if (!cache.isEmpty()) {
             Log.d(TAG, "Cache already populated (" + cache.size() + " items), skipping bulk fetch.");
-            scanInstalledApps(context);
             return;
         }
 
@@ -153,16 +154,11 @@ public class CategoryManager {
                     saveCache(context);
                 }
                 Log.d(TAG, "Merged " + popularApps.size() + " popular apps into cache");
-
-                // 2. After popular apps are loaded, scan installed apps for gaps
-                scanInstalledApps(context);
             }
 
             @Override
             public void onError(String errorMessage) {
                 Log.w(TAG, "Failed to fetch popular apps: " + errorMessage);
-                // Still scan installed apps even if bulk fetch fails
-                scanInstalledApps(context);
             }
         });
     }
@@ -173,6 +169,11 @@ public class CategoryManager {
     public static synchronized void resolveAndCache(Context context, String packageName) {
         if (cache.containsKey(packageName)) return;
         if (pendingLookups.contains(packageName)) return;
+        if (failedLookups.containsKey(packageName)) {
+            if (System.currentTimeMillis() - failedLookups.get(packageName) < RETRY_COOLDOWN_MS) {
+                return; // Cooldown active
+            }
+        }
         pendingLookups.add(packageName);
 
         Log.d(TAG, "Resolving category for: " + packageName);
@@ -192,6 +193,7 @@ public class CategoryManager {
             public void onError(String errorMessage) {
                 synchronized (CategoryManager.class) {
                     pendingLookups.remove(packageName);
+                    failedLookups.put(packageName, System.currentTimeMillis());
                 }
                 Log.w(TAG, "Failed to resolve " + packageName + ": " + errorMessage);
             }

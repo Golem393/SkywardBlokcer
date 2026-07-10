@@ -51,7 +51,8 @@ fun SetupScreen(
     state: SetupViewState,
     onActionClicked: () -> Unit,
     onLoginClicked: (String, String) -> Unit,
-    onCloseClicked: () -> Unit
+    onCloseClicked: () -> Unit,
+    onBypassClicked: () -> Unit = {}
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -113,6 +114,15 @@ fun SetupScreen(
                         },
                         onCloseClicked = onCloseClicked
                     )
+
+                    if (state.currentStep == SetupViewState.Step.FINALIZE_API) {
+                        TextButton(
+                            onClick = onBypassClicked,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Bypass (Test)", color = Color.Gray, fontWeight = FontWeight.W600)
+                        }
+                    }
                 }
             }
         }

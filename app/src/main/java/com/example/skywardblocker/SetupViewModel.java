@@ -248,6 +248,13 @@ public class SetupViewModel extends AndroidViewModel {
         });
     }
 
+    public void onBypassClicked() {
+        new Handler(Looper.getMainLooper()).post(() -> {
+            StateManager.setMemberId(getApplication(), "TEST_BYPASS");
+            StateManager.nextState(getApplication());
+            evaluateState();
+        });
+    }
 
 
     private String getMdmProvidedSerialNumber(Context context) {

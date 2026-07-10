@@ -13,7 +13,8 @@ object ComposeBridge {
         composeView: ComposeView,
         onActionClicked: java.util.function.Consumer<SetupViewState.Step>,
         onLoginClicked: java.util.function.BiConsumer<String, String>,
-        onCloseClicked: Runnable
+        onCloseClicked: Runnable,
+        onBypassClicked: Runnable
     ) {
         composeView.setContent {
             val state by stateFlow.collectAsState()
@@ -22,7 +23,8 @@ object ComposeBridge {
                     state = currentState,
                     onActionClicked = { onActionClicked.accept(currentState.currentStep) },
                     onLoginClicked = { e, p -> onLoginClicked.accept(e, p) },
-                    onCloseClicked = { onCloseClicked.run() }
+                    onCloseClicked = { onCloseClicked.run() },
+                    onBypassClicked = { onBypassClicked.run() }
                 )
             }
         }
@@ -38,6 +40,7 @@ object ComposeBridge {
         composeView: ComposeView,
         title: String,
         message: String,
+        actionLabel: String,
         isActionButtonVisible: Boolean,
         onActionClicked: Runnable,
         onCloseClicked: Runnable
@@ -46,7 +49,7 @@ object ComposeBridge {
             val state = SetupViewState(
                 title,
                 message,
-                "Uninstall App",
+                actionLabel,
                 isActionButtonVisible,
                 true,
                 SetupViewState.Step.COMPLETE
@@ -55,7 +58,8 @@ object ComposeBridge {
                 state = state,
                 onActionClicked = { onActionClicked.run() },
                 onLoginClicked = { _, _ -> },
-                onCloseClicked = { onCloseClicked.run() }
+                onCloseClicked = { onCloseClicked.run() },
+                onBypassClicked = {}
             )
         }
     }

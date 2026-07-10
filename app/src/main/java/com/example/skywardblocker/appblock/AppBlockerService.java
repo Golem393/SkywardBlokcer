@@ -9,6 +9,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 import android.view.accessibility.AccessibilityEvent;
+import android.view.accessibility.AccessibilityNodeInfo;
 
 import com.example.skywardblocker.R;
 import com.example.skywardblocker.StateManager;
@@ -119,6 +120,8 @@ public class AppBlockerService extends AccessibilityService {
         // Ignore our own package and system UI
         if (pkg.equals(getPackageName()) || pkg.equals("com.android.systemui")) return;
 
+        Log.d(TAG, "EVENT TRIGGERED | pkg=" + pkg + " | eventType=" + event.getEventType());
+
         // --- Auto DNS Setup ---
         boolean autoConfigureDns = getSharedPreferences("skyward_prefs", MODE_PRIVATE)
                 .getBoolean("auto_configure_dns", false);
@@ -170,7 +173,7 @@ public class AppBlockerService extends AccessibilityService {
 
             if (isDefending) {
                 Log.d(TAG, "SETTINGS DEFENSE | blocking settings modification attempt");
-                triggerBlock(pkg, "Access Denied", "You do not have permission to modify these parameters.", true);
+                triggerBlock(pkg, "Access Denied", "You do not have permission to modify these parameters.", true, false);
                 return;
             }
         }
@@ -195,26 +198,142 @@ public class AppBlockerService extends AccessibilityService {
             Log.d(TAG, "BLOCK | pkg=" + pkg + " | sending home then showing warning");
             lastBlockedTimes.put(pkg, now);
 
-            triggerBlock(pkg, "App blocked", "This app is restricted by Skyward.", false);
+            triggerBlock(pkg, "App blocked", "This app is restricted by Skyward.", false, false);
+            return;
         }
+
+        // --- Domain blocking ---
+        AccessibilityNodeInfo root = getRootInActiveWindow();
+        if (root != null) {
+            String extractedDomain = findDomainInNode(root);
+            if (extractedDomain != null) {
+                if (DomainCategoryManager.isDomainInBlockedCategory(this, extractedDomain)) {
+                    Long lastBlocked = lastBlockedTimes.get(pkg);
+                    long now = System.currentTimeMillis();
+                    if (lastBlocked != null && (now - lastBlocked) < BLOCK_COOLDOWN_MS) {
+                        return;
+                    }
+                    Log.d(TAG, "BLOCK DOMAIN | domain=" + extractedDomain + " | pkg=" + pkg);
+                    lastBlockedTimes.put(pkg, now);
+                    triggerBlock(pkg, "Website blocked", "This website is restricted by Skyward.", false, true);
+                    return;
+                }
+            }
+        }
+    }
+
+    private String findDomainInNode(AccessibilityNodeInfo root) {
+        if (root == null) return null;
+
+        // 1. Try known browser URL bar View IDs for exact matches (fastest and most reliable)
+        String[] urlBarIds = {
+            "com.android.chrome:id/url_bar",
+            "org.mozilla.firefox:id/mozac_browser_toolbar_url_view",
+            "com.sec.android.app.sbrowser:id/location_bar_edit_text",
+            "com.opera.browser:id/url_field",
+            "com.microsoft.emmx:id/url_bar",
+            "com.brave.browser:id/url_bar",
+            "com.duckduckgo.mobile.android:id/omnibarTextInput"
+        };
+
+        for (String id : urlBarIds) {
+            java.util.List<AccessibilityNodeInfo> nodes = root.findAccessibilityNodeInfosByViewId(id);
+            if (nodes != null && !nodes.isEmpty()) {
+                for (AccessibilityNodeInfo node : nodes) {
+                    if (node.isFocused()) {
+                        // User is actively typing, ignore auto-suggestions to prevent premature blocking
+                        return null;
+                    }
+                    if (node.getText() != null) {
+                        String domain = extractDomain(node.getText().toString());
+                        if (domain != null) return domain;
+                    }
+                }
+            }
+        }
+
+        // 2. Generic fallback: traverse and look for an EditText that contains a valid URL.
+        // URL bars are usually EditTexts. We limit checking to EditText to avoid false positives in page content.
+        return traverseForDomain(root, 0);
+    }
+
+    private String traverseForDomain(AccessibilityNodeInfo node, int depth) {
+        if (node == null || depth > 10) return null; // limit depth to prevent lag
+
+        if ("android.widget.EditText".equals(node.getClassName()) && node.getText() != null) {
+            if (node.isFocused()) {
+                return null;
+            }
+            String domain = extractDomain(node.getText().toString());
+            if (domain != null) {
+                return domain;
+            }
+        }
+
+        for (int i = 0; i < node.getChildCount(); i++) {
+            AccessibilityNodeInfo child = node.getChild(i);
+            if (child != null) {
+                String domain = traverseForDomain(child, depth + 1);
+                child.recycle();
+                if (domain != null) return domain;
+            }
+        }
+        return null;
+    }
+
+    private String extractDomain(String text) {
+        if (text == null) return null;
+        text = text.trim();
+        // Ignore very long text (not a URL bar)
+        if (text.length() > 200 || text.isEmpty()) return null;
+        
+        // Fast fail: URLs shouldn't have spaces or newlines (unless encoded, but URL bars usually show spaces as %20 or don't have them)
+        if (text.contains(" ") || text.contains("\n")) return null;
+        
+        String url = text;
+        if (!url.startsWith("http://") && !url.startsWith("https://")) {
+            // Needs at least a dot to be a domain
+            if (!url.contains(".")) return null;
+            url = "http://" + url;
+        }
+        
+        try {
+            java.net.URL parsedUrl = new java.net.URL(url);
+            String host = parsedUrl.getHost();
+            if (host != null && host.contains(".")) {
+                if (host.startsWith("www.")) {
+                    host = host.substring(4);
+                }
+                return host;
+            }
+        } catch (Exception e) {
+            // Ignore
+        }
+        return null;
     }
 
     /**
      * Shows the WarningActivity on top of the blocked app immediately.
      */
-    private void triggerBlock(String blockedPackage, String title, String message, boolean isSettings) {
+    private void triggerBlock(String blockedPackage, String title, String message, boolean isSettings, boolean isWebsite) {
         if (isSettings) {
             // Go back one option out of the blocked settings page so reopening Settings doesn't re-trigger
             performGlobalAction(GLOBAL_ACTION_BACK);
             // After a tiny delay, send the user home
             handler.postDelayed(() -> performGlobalAction(GLOBAL_ACTION_HOME), 150);
         } else {
-            // Step 1: Press Home to kill the blocked app's UI immediately
-            performGlobalAction(GLOBAL_ACTION_HOME);
+            if (isWebsite) {
+                // Press back to navigate the browser away from the blocked URL or close the new tab
+                performGlobalAction(GLOBAL_ACTION_BACK);
+                handler.postDelayed(() -> performGlobalAction(GLOBAL_ACTION_HOME), 150);
+            } else {
+                // Press Home to kill the blocked app's UI immediately
+                performGlobalAction(GLOBAL_ACTION_HOME);
+            }
         }
 
-        // Step 2: After a short delay (let home screen settle), show WarningActivity
-        long warningDelay = isSettings ? 450 : 300;
+        // After a short delay (let home screen settle), show WarningActivity
+        long warningDelay = (isSettings || isWebsite) ? 450 : 300;
         handler.postDelayed(() -> {
             Intent dialogIntent = new Intent(this, WarningActivity.class);
             dialogIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
@@ -222,6 +341,7 @@ public class AppBlockerService extends AccessibilityService {
             dialogIntent.putExtra("title", title);
             dialogIntent.putExtra("message", message);
             dialogIntent.putExtra("is_settings", isSettings);
+            dialogIntent.putExtra("is_website", isWebsite);
             startActivity(dialogIntent);
         }, warningDelay);
 
