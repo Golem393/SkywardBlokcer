@@ -1,17 +1,19 @@
-package com.example.skywardblocker.appblock;
+package com.example.skywardblocker.blocking;
 
 import android.content.Context;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.util.Log;
 
-import com.example.skywardblocker.MdmApiClient;
+import com.example.skywardblocker.api.ApiClient;
+import com.example.skywardblocker.admin.DevicePolicyHelper;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -19,6 +21,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * Manages app category resolution, caching, and Device Owner-based blocking.
+ *
+ * When a category is resolved and it's in BLOCKED_CATEGORIES, the app is
+ * immediately suspended via DevicePolicyManager (Device Owner).
+ */
 public class CategoryManager {
 
     private static final String TAG = "SkywardDebug";
@@ -56,47 +64,23 @@ public class CategoryManager {
     // Packages currently being resolved (prevent duplicate API calls)
     private static final Set<String> pendingLookups = new HashSet<>();
 
+    // Lazy DevicePolicyHelper instance (avoids repeated allocation in hot paths)
+    private static DevicePolicyHelper cachedDph;
+
+    private static synchronized DevicePolicyHelper getDph(Context context) {
+        if (cachedDph == null) {
+            cachedDph = new DevicePolicyHelper(context);
+        }
+        return cachedDph;
+    }
+
     // ── Public API ────────────────────────────────────────────────────
 
-    private static String lastCheckedPackage = "";
-
-    public static void forceFetchPopularApps(Context context) {
-        Log.d(TAG, "Forcing fetch of popular apps...");
-        MdmApiClient.fetchPopularApps(context, new MdmApiClient.ApiCallback<Map<String, String>>() {
-            @Override
-            public void onSuccess(Map<String, String> popularApps) {
-                synchronized (CategoryManager.class) {
-                    cache.putAll(popularApps);
-                    saveCache(context);
-                }
-                Log.d(TAG, "Force-fetched and merged " + popularApps.size() + " popular apps into cache");
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                Log.w(TAG, "Failed to force-fetch popular apps: " + errorMessage);
-            }
-        });
-    }
-
-    public static void printCache() {
-        synchronized (CategoryManager.class) {
-            Log.d(TAG, "--- Current App Cache (" + cache.size() + " entries) ---");
-            for (Map.Entry<String, String> entry : cache.entrySet()) {
-                Log.d(TAG, "App: " + entry.getKey() + " -> Category: " + entry.getValue());
-            }
-            Log.d(TAG, "--- End of Cache ---");
-        }
-    }
-
     /**
-     * Returns true if the app is in a blocked category.
-     * If the category is unknown, returns false and fires an async lookup.
-     * The app will be blocked on subsequent opens once the category is resolved.
+     * Returns true if the app is in a blocked category (based on cache only).
      */
     public static synchronized boolean isAppInBlockedCategory(Context context, String packageName) {
         if (context.getPackageManager().getLaunchIntentForPackage(packageName) == null) {
-            // There is no UI for the user to open. It's a background OS component.
             return false;
         }
 
@@ -104,81 +88,45 @@ public class CategoryManager {
 
         String category = cache.get(packageName);
         if (category != null) {
-            boolean blocked = BLOCKED_CATEGORIES.contains(category);
-            if (!packageName.equals(lastCheckedPackage)) {
-                Log.d(TAG, packageName + " → " + category + " → " + (blocked ? "BLOCKED" : "ALLOWED"));
-                lastCheckedPackage = packageName;
-            }
-            return blocked;
+            return BLOCKED_CATEGORIES.contains(category);
         }
 
-        // Category unknown — resolve in background
+        // Category unknown — resolve in background (will suspend if blocked)
         resolveAndCache(context, packageName);
-
-        // TEMPORARY: Immediately block if the OS reports it as a game
-        try {
-            ApplicationInfo appInfo = context.getPackageManager().getApplicationInfo(packageName, 0);
-            if (appInfo.category == ApplicationInfo.CATEGORY_GAME) {
-                if (!packageName.equals(lastCheckedPackage)) {
-                    Log.d(TAG, packageName + " → OS_CATEGORY_GAME → BLOCKED (Waiting for API)");
-                    lastCheckedPackage = packageName;
-                }
-                return true;
-            }
-        } catch (PackageManager.NameNotFoundException e) {
-            // Ignore
-        }
-
         return false;
     }
 
     /**
-     * Call once at app startup (e.g. in AppBlockerService.onServiceConnected).
-     * Fetches bulk popular-apps list and scans installed packages.
+     * Call once at startup (e.g. from BootReceiver or SkywardDeviceAdmin).
+     * Loads the on-disk cache, scans installed packages for any gaps,
+     * then suspends all blocked apps via Device Owner.
      */
     public static void initializeCache(Context context) {
         loadCacheIfNeeded(context);
-
-        if (!cache.isEmpty()) {
-            Log.d(TAG, "Cache already populated (" + cache.size() + " items), skipping bulk fetch.");
-            scanInstalledApps(context);
-            return;
-        }
-
-        // 1. Fetch popular apps from backend (bulk)
-        MdmApiClient.fetchPopularApps(context, new MdmApiClient.ApiCallback<Map<String, String>>() {
-            @Override
-            public void onSuccess(Map<String, String> popularApps) {
-                synchronized (CategoryManager.class) {
-                    cache.putAll(popularApps);
-                    saveCache(context);
-                }
-                Log.d(TAG, "Merged " + popularApps.size() + " popular apps into cache");
-
-                // 2. After popular apps are loaded, scan installed apps for gaps
-                scanInstalledApps(context);
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                Log.w(TAG, "Failed to fetch popular apps: " + errorMessage);
-                // Still scan installed apps even if bulk fetch fails
-                scanInstalledApps(context);
-            }
-        });
+        scanInstalledApps(context);
+        enforceBlockedApps(context);
     }
 
     /**
      * Resolve a single package's category via API and cache it.
+     * If the resolved category is blocked, the app is immediately suspended.
      */
     public static synchronized void resolveAndCache(Context context, String packageName) {
-        if (cache.containsKey(packageName)) return;
+        if (cache.containsKey(packageName)) {
+            String existingCat = cache.get(packageName);
+            Log.d(TAG, "Package " + packageName + " already in cache (" + existingCat + "). Checking block status...");
+            if (BLOCKED_CATEGORIES.contains(existingCat)) {
+                Log.i(TAG, "New install " + packageName + " matches blocked category (" + existingCat + ") — suspending instantly!");
+                suspendApp(context, packageName, true);
+            }
+            return;
+        }
         if (pendingLookups.contains(packageName)) return;
         pendingLookups.add(packageName);
 
         Log.d(TAG, "Resolving category for: " + packageName);
 
-        MdmApiClient.fetchAppCategory(context, packageName, new MdmApiClient.ApiCallback<String>() {
+        ApiClient.fetchAppCategory(context, packageName, new ApiClient.ApiCallback<String>() {
             @Override
             public void onSuccess(String category) {
                 synchronized (CategoryManager.class) {
@@ -187,6 +135,11 @@ public class CategoryManager {
                     saveCache(context);
                 }
                 Log.d(TAG, "Cached: " + packageName + " → " + category);
+
+                // If blocked, suspend immediately via Device Owner
+                if (BLOCKED_CATEGORIES.contains(category)) {
+                    suspendApp(context, packageName, true);
+                }
             }
 
             @Override
@@ -209,22 +162,56 @@ public class CategoryManager {
     }
 
     /**
-     * Clear the cache manually.
+     * Iterates all cached apps and suspends any in blocked categories.
+     * Call after cache is loaded/updated to enforce blocking via Device Owner.
      */
-    public static synchronized void clearCache(Context context) {
-        cache.clear();
-        saveCache(context);
-        Log.d(TAG, "Category cache cleared.");
+    public static void enforceBlockedApps(Context context) {
+        DevicePolicyHelper dph = getDph(context);
+        if (!dph.isDeviceOwner()) {
+            Log.w(TAG, "enforceBlockedApps: not Device Owner, skipping");
+            return;
+        }
+
+        PackageManager pm = context.getPackageManager();
+        List<String> toSuspend = new ArrayList<>();
+        synchronized (CategoryManager.class) {
+            for (Map.Entry<String, String> entry : cache.entrySet()) {
+                if (BLOCKED_CATEGORIES.contains(entry.getValue())) {
+                    try {
+                        // Only attempt suspension if the app is actually installed on this device
+                        pm.getPackageInfo(entry.getKey(), 0);
+                        toSuspend.add(entry.getKey());
+                    } catch (PackageManager.NameNotFoundException ignored) {
+                        // Package from popular-apps list is not installed locally; ignore
+                    }
+                }
+            }
+        }
+
+        if (!toSuspend.isEmpty()) {
+            String[] packages = toSuspend.toArray(new String[0]);
+            String[] failed = dph.setPackagesSuspended(packages, true);
+            Log.d(TAG, "Suspended " + (packages.length - failed.length) + "/" + packages.length + " installed blocked apps");
+            if (failed.length > 0) {
+                Log.w(TAG, "Failed to suspend: " + Arrays.toString(failed));
+            }
+        }
     }
 
     // ── Internal ──────────────────────────────────────────────────────
+
+    private static void suspendApp(Context context, String packageName, boolean suspend) {
+        DevicePolicyHelper dph = getDph(context);
+        if (!dph.isDeviceOwner()) return;
+        dph.setPackagesSuspended(new String[]{packageName}, suspend);
+        Log.d(TAG, (suspend ? "Suspended" : "Unsuspended") + ": " + packageName);
+    }
 
     private static void scanInstalledApps(Context context) {
         PackageManager pm = context.getPackageManager();
         List<ApplicationInfo> apps = pm.getInstalledApplications(0);
 
         for (ApplicationInfo app : apps) {
-            // Skip apps that have no launchable UI (background/system processes)
             if (pm.getLaunchIntentForPackage(app.packageName) == null) continue;
 
             synchronized (CategoryManager.class) {
@@ -268,4 +255,5 @@ public class CategoryManager {
             Log.e(TAG, "Error saving category cache", e);
         }
     }
+
 }

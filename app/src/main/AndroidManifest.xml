@@ -1,42 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.example.skywardblocker">
 
-
-    <queries>
-        <package android:name="app.olauncher" />
-    </queries>
-    <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SYSTEM_EXEMPTED" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 
     <application
-
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:theme="@style/Theme.AppCompat.Light.NoActionBar">
 
-        <meta-data
-            android:name="android.content.APP_RESTRICTIONS"
-            android:resource="@xml/app_restrictions" />
-
-        <!-- The Accessibility Service -->
-        <service
-            android:name=".appblock.AppBlockerService"
-            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.accessibilityservice.AccessibilityService" />
-            </intent-filter>
-            <meta-data
-                android:name="android.accessibilityservice"
-                android:resource="@xml/accessibility_service_config" />
-        </service>
-
-        <!-- A dummy activity to force the user to the settings screen -->
+        <!-- Main status activity -->
         <activity
-            android:name="MainActivity"
+            android:name=".MainActivity"
             android:screenOrientation="portrait"
             android:exported="true">
             <intent-filter>
@@ -45,21 +27,55 @@
             </intent-filter>
         </activity>
 
-        <activity
-            android:name=".appblock.WarningActivity"
-            android:theme="@style/Theme.AppCompat.Light.NoActionBar"
-            android:launchMode="singleInstance"
-            android:excludeFromRecents="true"
-            android:screenOrientation="portrait"
-            android:exported="false" />
+        <!-- Lightweight Foreground Service holding dynamic PackageChangeReceiver (System Exempted for Device Owner) -->
+        <service
+            android:name=".blocking.AppMonitorService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="systemExempted|specialUse">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="device_policy_enforcement" />
+        </service>
 
+        <!-- Resumes monitoring after reboot or APK replacement without user intervention -->
         <receiver
-            android:name=".appblock.PackageChangeReceiver"
+            android:name=".receiver.BootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Detects new app installs and uninstalls to keep blocklists updated -->
+        <receiver
+            android:name=".receiver.PackageChangeReceiver"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.PACKAGE_ADDED" />
                 <action android:name="android.intent.action.PACKAGE_FULLY_REMOVED" />
                 <data android:scheme="package" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Device Admin Receiver for Device Owner mode (ADB distribution) -->
+        <receiver
+            android:name=".admin.SkywardDeviceAdmin"
+            android:permission="android.permission.BIND_DEVICE_ADMIN"
+            android:exported="true">
+            <meta-data
+                android:name="android.app.device_admin"
+                android:resource="@xml/device_admin_policies" />
+            <intent-filter>
+                <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Receiver for desktop companion app & debug ADB commands (e.g. self-clearing Device Owner) -->
+        <receiver
+            android:name=".receiver.AdbCommandReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.example.skywardblocker.CLEAR_OWNER" />
             </intent-filter>
         </receiver>
 

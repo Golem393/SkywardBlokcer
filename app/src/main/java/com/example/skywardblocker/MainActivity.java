@@ -1,17 +1,24 @@
 package com.example.skywardblocker;
 
-import android.content.Intent;
 import android.os.Bundle;
-import android.provider.Settings;
 import android.util.Log;
-import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.lifecycle.ViewModelProvider;
 import androidx.compose.ui.platform.ComposeView;
 
+import com.example.skywardblocker.admin.DevicePolicyHelper;
+import com.example.skywardblocker.api.ApiClient;
+import com.example.skywardblocker.blocking.CategoryManager;
+import com.example.skywardblocker.ui.ComposeBridge;
+
+/**
+ * Minimal status activity for SkywardBlocker.
+ *
+ * All setup (Device Owner, DNS, auth) is handled by the desktop installer via ADB.
+ * This activity just shows the current status and triggers the initial app scan.
+ */
 public class MainActivity extends AppCompatActivity {
 
-    private SetupViewModel viewModel;
+    private static final String TAG = "SkywardDebug";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -20,87 +27,27 @@ public class MainActivity extends AppCompatActivity {
         ComposeView composeView = new ComposeView(this);
         setContentView(composeView);
 
-        viewModel = new ViewModelProvider(this).get(SetupViewModel.class);
-        viewModel.getViewState().observe(this, this::updateUI);
+        DevicePolicyHelper dph = new DevicePolicyHelper(this);
 
-        ComposeBridge.setup(
-                composeView,
-                this::handleActionClick,
-                viewModel::onLoginClicked,
-                this::finish
-        );
+        // Auto-configure if Device Owner (idempotent)
+        if (dph.isDeviceOwner()) {
+            Log.d(TAG, "Device Owner active — applying lockdown + DNS + Monitor Service");
+            dph.lockdownSkyward();
+            dph.setPrivateDns(ApiClient.DNS_HOSTNAME);
 
-        // Restrict back button usage unless setup is complete (IDLE state)
-        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
-            @Override
-            public void handleOnBackPressed() {
-                if (StateManager.getState(MainActivity.this) == StateManager.AppState.BLOCKING) {
-                    finish();
-                }
-            }
-        });
+            // Initialize category cache and suspend blocked apps
+            CategoryManager.initializeCache(this);
+            // Note: AppMonitorService is started by SkywardDeviceAdmin.onEnabled() and BootReceiver — no need to restart here.
+        }
+
+        // Set up the status UI
+        ComposeBridge.setup(composeView, dph.isDeviceOwner(), this::finish);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        // Re-evaluate state when returning to the app (e.g., from Settings)
-        viewModel.evaluateState();
-    }
-
-    private void updateUI(SetupViewState state) {
-        if (state == null) return;
-        ComposeBridge.updateState(state);
-    }
-
-    private void handleActionClick(SetupViewState.Step currentStep) {
-        switch (currentStep) {
-            case ENABLE_ACCESSIBILITY:
-                Intent intent = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
-                startActivity(intent);
-                break;
-            case SETUP_DNS:
-                // 1. Tell the Accessibility Service to expect the DNS screen
-                getSharedPreferences("skyward_prefs", MODE_PRIVATE)
-                        .edit().putBoolean("auto_configure_dns", true).apply();
-
-                // 2. Launch the Network & Internet settings screen
-                try {
-                    // This is a real intent. It opens the menu where Private DNS lives.
-                    Intent intent2 = new Intent(Settings.ACTION_WIRELESS_SETTINGS);
-                    startActivity(intent2);
-                } catch (Exception e) {
-                    Log.d("SkywardDebug", "failed: " + e.getMessage());
-                    try {
-                        // Safe fallback to the main settings page
-                        Intent fallback = new Intent(Settings.ACTION_SETTINGS);
-                        startActivity(fallback);
-                    } catch (Exception e2) {
-                        Log.d("SkywardDebug", "fallback failed: " + e2.getMessage());
-                    }
-                }
-                break;
-            case SETUP_DNS_MANUAL:
-                // Launch the Network & Internet settings screen without setting auto_configure_dns
-                try {
-                    Intent intent2 = new Intent(Settings.ACTION_WIRELESS_SETTINGS);
-                    startActivity(intent2);
-                } catch (Exception e) {
-                    Log.d("SkywardDebug", "failed: " + e.getMessage());
-                    try {
-                        Intent fallback = new Intent(Settings.ACTION_SETTINGS);
-                        startActivity(fallback);
-                    } catch (Exception e2) {
-                        Log.d("SkywardDebug", "fallback failed: " + e2.getMessage());
-                    }
-                }
-                break;
-            case FINALIZE_API:
-                viewModel.onFinalizeClicked();
-                break;
-            case COMPLETE:
-                // No action needed here; the close button handles exit
-                break;
-        }
+        // Re-enforce blocked apps each time the activity resumes
+        CategoryManager.enforceBlockedApps(this);
     }
 }

@@ -1,9 +1,10 @@
-package com.example.skywardblocker.appblock;
+package com.example.skywardblocker.receiver;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.util.Log;
+import com.example.skywardblocker.blocking.CategoryManager;
 
 /**
  * Listens for app install/uninstall events and updates the category cache.
