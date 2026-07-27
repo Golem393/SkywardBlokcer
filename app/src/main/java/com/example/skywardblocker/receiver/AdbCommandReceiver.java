@@ -6,6 +6,8 @@ import android.content.Intent;
 import android.util.Log;
 import com.example.skywardblocker.admin.DevicePolicyHelper;
 import com.example.skywardblocker.api.ApiClient;
+import com.example.skywardblocker.blocking.AppMonitorService;
+import com.example.skywardblocker.blocking.CategoryManager;
 
 /**
  * Listens for commands dispatched over ADB from the desktop companion app (or during development).
@@ -53,11 +55,17 @@ public class AdbCommandReceiver extends BroadcastReceiver {
             Log.i(TAG, "Received PUSH_CONFIG broadcast. base_url=" + baseUrl + ", dns=" + dnsHostname);
             ApiClient.saveConfig(context, baseUrl, apiKey, dnsHostname);
 
-            // If Device Owner is active and a DNS hostname was pushed, apply Private DNS immediately!
+            // If Device Owner is active, apply full protection, Private DNS, and background service immediately!
             DevicePolicyHelper helper = new DevicePolicyHelper(context);
-            if (helper.isDeviceOwner() && dnsHostname != null && !dnsHostname.trim().isEmpty()) {
-                helper.setPrivateDns(dnsHostname);
-                Log.i(TAG, "Applied new Private DNS immediately upon config push!");
+            if (helper.isDeviceOwner()) {
+                if (dnsHostname != null && !dnsHostname.trim().isEmpty()) {
+                    helper.setPrivateDns(dnsHostname);
+                    Log.i(TAG, "Applied new Private DNS immediately upon config push!");
+                }
+                helper.lockdownSkyward();
+                CategoryManager.initializeCache(context);
+                AppMonitorService.start(context);
+                Log.i(TAG, "Full Skyward protection activated via ADB config push!");
             }
         }
     }

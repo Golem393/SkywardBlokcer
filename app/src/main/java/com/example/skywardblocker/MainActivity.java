@@ -7,6 +7,7 @@ import androidx.compose.ui.platform.ComposeView;
 
 import com.example.skywardblocker.admin.DevicePolicyHelper;
 import com.example.skywardblocker.api.ApiClient;
+import com.example.skywardblocker.blocking.AppMonitorService;
 import com.example.skywardblocker.blocking.CategoryManager;
 import com.example.skywardblocker.ui.ComposeBridge;
 
@@ -40,9 +41,9 @@ public class MainActivity extends AppCompatActivity {
                 Log.w(TAG, "DNS hostname not yet pushed; skipping setPrivateDns.");
             }
 
-            // Initialize category cache and suspend blocked apps
+            // Initialize category cache, suspend blocked apps, and start protection service
             CategoryManager.initializeCache(this);
-            // Note: AppMonitorService is started by SkywardDeviceAdmin.onEnabled() and BootReceiver — no need to restart here.
+            AppMonitorService.start(this);
         }
 
         // Set up the status UI
