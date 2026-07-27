@@ -31,7 +31,12 @@ public class SkywardDeviceAdmin extends DeviceAdminReceiver {
         DevicePolicyHelper dph = new DevicePolicyHelper(context);
         if (dph.isDeviceOwner()) {
             dph.lockdownSkyward();
-            dph.setPrivateDns(ApiClient.DNS_HOSTNAME);
+            String dnsHostname = ApiClient.getDnsHostname(context);
+            if (dnsHostname != null && !dnsHostname.trim().isEmpty()) {
+                dph.setPrivateDns(dnsHostname);
+            } else {
+                Log.w(TAG, "DNS hostname not yet pushed; skipping setPrivateDns in SkywardDeviceAdmin.");
+            }
             CategoryManager.initializeCache(context);
             AppMonitorService.start(context);
         }

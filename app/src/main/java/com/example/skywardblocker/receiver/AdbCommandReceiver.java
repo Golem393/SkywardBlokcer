@@ -5,18 +5,26 @@ import android.content.Context;
 import android.content.Intent;
 import android.util.Log;
 import com.example.skywardblocker.admin.DevicePolicyHelper;
+import com.example.skywardblocker.api.ApiClient;
 
 /**
  * Listens for commands dispatched over ADB from the desktop companion app (or during development).
  *
  * Supported commands:
- *   adb shell am broadcast -a com.example.skywardblocker.CLEAR_OWNER
+ *   1) Clear Device Owner status:
+ *      adb shell am broadcast -a com.example.skywardblocker.CLEAR_OWNER
+ *
+ *   2) Push Configuration from desktop companion app:
+ *      adb shell am broadcast -a com.example.skywardblocker.PUSH_CONFIG \
+ *        -n com.example.skywardblocker/.receiver.AdbCommandReceiver \
+ *        --es base_url "https://..." --es api_key "api_..." --es dns_hostname "..."
  */
 public class AdbCommandReceiver extends BroadcastReceiver {
 
     private static final String TAG = "SkywardDebug";
 
     public static final String ACTION_CLEAR_OWNER = "com.example.skywardblocker.CLEAR_OWNER";
+    public static final String ACTION_PUSH_CONFIG = "com.example.skywardblocker.PUSH_CONFIG";
 
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -35,6 +43,21 @@ public class AdbCommandReceiver extends BroadcastReceiver {
                 Log.i(TAG, "SUCCESS: Device Owner status relinquished. Skyward can now be uninstalled.");
             } else {
                 Log.w(TAG, "App is not currently Device Owner; ignoring clear command.");
+            }
+        }
+        else if (ACTION_PUSH_CONFIG.equals(action)) {
+            String baseUrl = intent.getStringExtra("base_url");
+            String apiKey = intent.getStringExtra("api_key");
+            String dnsHostname = intent.getStringExtra("dns_hostname");
+
+            Log.i(TAG, "Received PUSH_CONFIG broadcast. base_url=" + baseUrl + ", dns=" + dnsHostname);
+            ApiClient.saveConfig(context, baseUrl, apiKey, dnsHostname);
+
+            // If Device Owner is active and a DNS hostname was pushed, apply Private DNS immediately!
+            DevicePolicyHelper helper = new DevicePolicyHelper(context);
+            if (helper.isDeviceOwner() && dnsHostname != null && !dnsHostname.trim().isEmpty()) {
+                helper.setPrivateDns(dnsHostname);
+                Log.i(TAG, "Applied new Private DNS immediately upon config push!");
             }
         }
     }

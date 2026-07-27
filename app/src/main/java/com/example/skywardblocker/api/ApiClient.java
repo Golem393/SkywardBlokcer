@@ -1,6 +1,7 @@
 package com.example.skywardblocker.api;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.util.Log;
 import org.json.JSONObject;
 
@@ -10,22 +11,46 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 
-
 /**
  * API client for communicating with the Skyward backend.
  *
- * Config is hardcoded — the desktop installer handles authentication.
- * This client only handles dynamic category lookups and blocklist fetching.
+ * Config is strictly loaded from SharedPreferences ("skyward_config"), pushed over ADB
+ * by the desktop installer during provisioning. No fallback default strings exist.
  */
 public class ApiClient {
 
     private static final String TAG = "SkywardDebug";
+    private static final String PREF_NAME = "skyward_config";
 
-    // ── Config constants ─────────────────────────────────────────────
+    private static final String KEY_BASE_URL = "base_url";
+    private static final String KEY_API_KEY = "api_key";
+    private static final String KEY_DNS_HOSTNAME = "dns_hostname";
 
-    private static final String BASE_URL = "https://mdm-backend-i4b0.onrender.com/api";
-    private static final String API_KEY = "api_3d9a7c1f5b824e9aa4d6f7c8b1e2a3d4";
-    public static final String DNS_HOSTNAME = "1w2whn92y8e.dns.controld.com";
+    // ── Config Getters & Setters (No Hardcoded Fallbacks!) ─────────────────
+
+    public static String getBaseUrl(Context context) {
+        SharedPreferences prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+        return prefs.getString(KEY_BASE_URL, null);
+    }
+
+    public static String getApiKey(Context context) {
+        SharedPreferences prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+        return prefs.getString(KEY_API_KEY, null);
+    }
+
+    public static String getDnsHostname(Context context) {
+        SharedPreferences prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+        return prefs.getString(KEY_DNS_HOSTNAME, null);
+    }
+
+    public static void saveConfig(Context context, String baseUrl, String apiKey, String dnsHostname) {
+        SharedPreferences.Editor editor = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE).edit();
+        if (baseUrl != null) editor.putString(KEY_BASE_URL, baseUrl);
+        if (apiKey != null) editor.putString(KEY_API_KEY, apiKey);
+        if (dnsHostname != null) editor.putString(KEY_DNS_HOSTNAME, dnsHostname);
+        editor.apply();
+        Log.i(TAG, "Saved pushed configuration to SharedPreferences!");
+    }
 
     // ── Generic callback ──────────────────────────────────────────────
 
@@ -39,8 +64,15 @@ public class ApiClient {
     private static final int MAX_RETRIES = 3;
     private static final long RETRY_DELAY_MS = 2000;
 
-    private static String doRequest(String method, String path, String jsonBody) throws Exception {
-        URL url = new URL(BASE_URL + path);
+    private static String doRequest(Context context, String method, String path, String jsonBody) throws Exception {
+        String baseUrl = getBaseUrl(context);
+        String apiKey = getApiKey(context);
+
+        if (baseUrl == null || baseUrl.trim().isEmpty() || apiKey == null || apiKey.trim().isEmpty()) {
+            throw new IllegalStateException("Configuration missing! The Skyward Desktop Installer must push configuration over ADB first.");
+        }
+
+        URL url = new URL(baseUrl + path);
         int maxAttempts = MAX_RETRIES;
         int attempt = 0;
         Exception lastException = null;
@@ -55,7 +87,7 @@ public class ApiClient {
                 conn.setReadTimeout(120000);
                 conn.setRequestMethod(method);
                 conn.setRequestProperty("Accept", "application/json");
-                conn.setRequestProperty("X-API-Key", API_KEY);
+                conn.setRequestProperty("X-API-Key", apiKey);
 
                 if (jsonBody != null) {
                     conn.setRequestProperty("Content-Type", "application/json");
@@ -94,7 +126,7 @@ public class ApiClient {
             }
         }
 
-        throw new Exception("Request failed after " + maxAttempts + " attempts. Last error: " + lastException.getMessage(), lastException);
+        throw new Exception("Request failed after " + maxAttempts + " attempts. Last error: " + (lastException != null ? lastException.getMessage() : "Unknown error"), lastException);
     }
 
     // ── Category endpoints (dynamic) ──────────────────────────────────
@@ -107,7 +139,7 @@ public class ApiClient {
         new Thread(() -> {
             try {
                 String body = "{\"packageName\": \"" + packageName + "\"}";
-                String json = doRequest("POST", "/app-category", body);
+                String json = doRequest(context, "POST", "/app-category", body);
                 JSONObject root = new JSONObject(json);
                 String category = root.getString("category");
                 Log.d(TAG, "Resolved " + packageName + " → " + category);

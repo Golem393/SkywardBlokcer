@@ -33,7 +33,12 @@ public class MainActivity extends AppCompatActivity {
         if (dph.isDeviceOwner()) {
             Log.d(TAG, "Device Owner active — applying lockdown + DNS + Monitor Service");
             dph.lockdownSkyward();
-            dph.setPrivateDns(ApiClient.DNS_HOSTNAME);
+            String dnsHostname = ApiClient.getDnsHostname(this);
+            if (dnsHostname != null && !dnsHostname.trim().isEmpty()) {
+                dph.setPrivateDns(dnsHostname);
+            } else {
+                Log.w(TAG, "DNS hostname not yet pushed; skipping setPrivateDns.");
+            }
 
             // Initialize category cache and suspend blocked apps
             CategoryManager.initializeCache(this);
