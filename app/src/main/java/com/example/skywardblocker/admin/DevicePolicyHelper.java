@@ -7,6 +7,9 @@ import android.os.Build;
 import android.os.UserManager;
 import android.util.Log;
 
+import com.example.skywardblocker.blocking.AppMonitorService;
+import com.example.skywardblocker.blocking.CategoryManager;
+
 /**
  * Helper class that wraps DevicePolicyManager calls.
  * Only works when the app is set as Device Owner via:
@@ -228,7 +231,24 @@ public class DevicePolicyHelper {
     public void clearDeviceOwner() {
         if (!isDeviceOwner()) return;
 
+        // 1. Stop background service to prevent race conditions during teardown
+        AppMonitorService.stop(context);
+
+        // 2. Un-suspend all installed apps so they become accessible again
+        CategoryManager.unblockAllApps(context);
+
+        // 3. Revert Private DNS to opportunistic (automatic) mode synchronously
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            try {
+                dpm.setGlobalPrivateDnsModeOpportunistic(adminComponent);
+                Log.d(TAG, "clearDeviceOwner: DNS reset to opportunistic mode");
+            } catch (Exception ignored) {}
+        }
+
+        // 4. Remove Skyward self-protections & user restrictions
         unlockSkyward();
+
+        // 5. Relinquish Device Owner privileges
         try {
             dpm.clearDeviceOwnerApp(context.getPackageName());
             Log.d(TAG, "clearDeviceOwner: Device Owner status removed");

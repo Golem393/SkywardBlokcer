@@ -198,6 +198,28 @@ public class CategoryManager {
         }
     }
 
+    /**
+     * Un-suspends all installed applications on the device.
+     * Called before relinquishing Device Owner status during deactivation.
+     */
+    public static void unblockAllApps(Context context) {
+        DevicePolicyHelper dph = getDph(context);
+        if (!dph.isDeviceOwner()) return;
+
+        PackageManager pm = context.getPackageManager();
+        List<ApplicationInfo> apps = pm.getInstalledApplications(0);
+        List<String> allPackages = new ArrayList<>();
+        for (ApplicationInfo app : apps) {
+            allPackages.add(app.packageName);
+        }
+
+        if (!allPackages.isEmpty()) {
+            String[] packages = allPackages.toArray(new String[0]);
+            dph.setPackagesSuspended(packages, false);
+            Log.i(TAG, "Unblocked all (" + packages.length + ") applications during Device Owner removal.");
+        }
+    }
+
     // ── Internal ──────────────────────────────────────────────────────
 
     private static void suspendApp(Context context, String packageName, boolean suspend) {

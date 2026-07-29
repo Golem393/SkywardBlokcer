@@ -46,6 +46,16 @@ public class AppMonitorService extends Service {
         }
     }
 
+    public static void stop(Context context) {
+        try {
+            Intent intent = new Intent(context, AppMonitorService.class);
+            context.stopService(intent);
+            Log.d(TAG, "AppMonitorService stop requested");
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to stop AppMonitorService", e);
+        }
+    }
+
     @Override
     public void onCreate() {
         super.onCreate();
