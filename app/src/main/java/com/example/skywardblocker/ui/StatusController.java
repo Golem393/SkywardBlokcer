@@ -1,8 +1,13 @@
 package com.example.skywardblocker.ui;
 
+import android.content.Context;
 import android.os.CountDownTimer;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
+import android.widget.Toast;
 import com.example.skywardblocker.admin.DevicePolicyHelper;
+import com.example.skywardblocker.api.ApiClient;
 import java.util.Locale;
 
 /**
@@ -14,6 +19,7 @@ public class StatusController {
     private static final long MAINTENANCE_DURATION_MS = 600_000L; // 10 minutes
     private static final long TICK_INTERVAL_MS = 1_000L;
 
+    private final Context context;
     private final DevicePolicyHelper dph;
     private final Runnable onCloseClickedCallback;
 
@@ -25,7 +31,8 @@ public class StatusController {
         void onStateChanged(StatusUiState newState);
     }
 
-    public StatusController(DevicePolicyHelper dph, Runnable onCloseClickedCallback) {
+    public StatusController(Context context, DevicePolicyHelper dph, Runnable onCloseClickedCallback) {
+        this.context = context;
         this.dph = dph;
         this.onCloseClickedCallback = onCloseClickedCallback;
         this.currentState = new StatusUiState(
@@ -83,9 +90,28 @@ public class StatusController {
             Log.w(TAG, "onLoginAndUnlockClicked: inputs invalid, ignored");
             return;
         }
-        Log.i(TAG, "Authentication successful: unlocking USB debugging for 10 minutes");
-        dph.setTemporaryDebugging(true);
-        startMaintenanceTimer();
+        Log.i(TAG, "Starting authentication for Dev Mode...");
+        updateState(currentState.copy(currentState.getMaintenanceState(), currentState.getEmail(), currentState.getPassword(), false, currentState.getFormattedRemainingTime()));
+
+        ApiClient.authenticateSetup(context, currentState.getEmail(), currentState.getPassword(), new ApiClient.ApiCallback<Boolean>() {
+            @Override
+            public void onSuccess(Boolean result) {
+                new Handler(Looper.getMainLooper()).post(() -> {
+                    Log.i(TAG, "Authentication successful: unlocking USB debugging for 10 minutes");
+                    dph.setTemporaryDebugging(true);
+                    startMaintenanceTimer();
+                });
+            }
+
+            @Override
+            public void onError(String errorMessage) {
+                new Handler(Looper.getMainLooper()).post(() -> {
+                    Log.w(TAG, "Authentication failed: " + errorMessage);
+                    Toast.makeText(context, errorMessage, Toast.LENGTH_LONG).show();
+                    updateState(currentState.copy(currentState.getMaintenanceState(), currentState.getEmail(), currentState.getPassword(), true, currentState.getFormattedRemainingTime()));
+                });
+            }
+        });
     }
 
     public void onLockNowClicked() {

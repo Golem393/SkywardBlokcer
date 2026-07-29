@@ -49,7 +49,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         // Initialize Java controller with business logic and link to stateless Compose UI
-        statusController = new StatusController(dph, this::finish);
+        statusController = new StatusController(this, dph, this::finish);
         ComposeBridge.setup(composeView, statusController);
     }
 
