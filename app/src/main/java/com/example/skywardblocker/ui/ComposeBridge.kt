@@ -7,14 +7,16 @@ object ComposeBridge {
     @JvmStatic
     fun setup(
         composeView: ComposeView,
-        isDeviceOwner: Boolean,
-        onCloseClicked: Runnable
+        controller: StatusController
     ) {
+        val stateHolder = mutableStateOf(controller.currentState)
+        controller.setStateChangeListener { newState ->
+            stateHolder.value = newState
+        }
+
         composeView.setContent {
-            StatusScreen(
-                isDeviceOwner = isDeviceOwner,
-                onCloseClicked = { onCloseClicked.run() }
-            )
+            val state by stateHolder
+            StatusScreen(state = state, controller = controller)
         }
     }
 }

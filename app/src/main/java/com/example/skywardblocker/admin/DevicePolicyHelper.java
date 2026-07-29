@@ -25,7 +25,7 @@ public class DevicePolicyHelper {
     // ── Developer / Test Flag ─────────────────────────────────────────
     // Set to TRUE during development & testing so USB debugging (ADB) remains enabled.
     // Set to FALSE for production releases so users cannot bypass protection via terminal commands.
-    public static final boolean ALLOW_USB_DEBUGGING = true;
+    public static final boolean ALLOW_USB_DEBUGGING = false;
 
     private final Context context;
     private final DevicePolicyManager dpm;
@@ -144,6 +144,18 @@ public class DevicePolicyHelper {
      */
     public void setDebuggingDisabled(boolean disabled) {
         setUserRestriction(UserManager.DISALLOW_DEBUGGING_FEATURES, disabled);
+    }
+
+    /**
+     * Toggles USB debugging restrictions for temporary maintenance mode.
+     * Uses boxed Boolean to support method reference matching for Consumer<Boolean>.
+     *
+     * @param enabled If true, temporarily removes debugging restriction. If false, enforces debugging restriction.
+     */
+    public void setTemporaryDebugging(Boolean enabled) {
+        boolean allowDebugging = enabled != null && enabled;
+        setUserRestriction(UserManager.DISALLOW_DEBUGGING_FEATURES, !allowDebugging);
+        Log.i(TAG, "Temporary debugging state changed: enabled=" + allowDebugging);
     }
 
     private void setUserRestriction(String restriction, boolean add) {

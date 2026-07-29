@@ -10,6 +10,7 @@ import com.example.skywardblocker.api.ApiClient;
 import com.example.skywardblocker.blocking.AppMonitorService;
 import com.example.skywardblocker.blocking.CategoryManager;
 import com.example.skywardblocker.ui.ComposeBridge;
+import com.example.skywardblocker.ui.StatusController;
 
 /**
  * Minimal status activity for SkywardBlocker.
@@ -20,6 +21,7 @@ import com.example.skywardblocker.ui.ComposeBridge;
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "SkywardDebug";
+    private StatusController statusController;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,8 +48,9 @@ public class MainActivity extends AppCompatActivity {
             AppMonitorService.start(this);
         }
 
-        // Set up the status UI
-        ComposeBridge.setup(composeView, dph.isDeviceOwner(), this::finish);
+        // Initialize Java controller with business logic and link to stateless Compose UI
+        statusController = new StatusController(dph, this::finish);
+        ComposeBridge.setup(composeView, statusController);
     }
 
     @Override
@@ -55,5 +58,13 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
         // Re-enforce blocked apps each time the activity resumes
         CategoryManager.enforceBlockedApps(this);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (statusController != null) {
+            statusController.cleanup();
+        }
     }
 }
