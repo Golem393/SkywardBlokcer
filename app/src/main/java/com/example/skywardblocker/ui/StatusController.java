@@ -8,6 +8,9 @@ import android.util.Log;
 import android.widget.Toast;
 import com.example.skywardblocker.admin.DevicePolicyHelper;
 import com.example.skywardblocker.api.ApiClient;
+import com.example.skywardblocker.blocking.CategoryManager;
+import com.example.skywardblocker.schedule.ScheduleManager;
+import com.example.skywardblocker.time.TrustedTimeManager;
 import java.util.Locale;
 
 /**
@@ -18,6 +21,7 @@ public class StatusController {
     private static final String TAG = "StatusController";
     private static final long MAINTENANCE_DURATION_MS = 600_000L; // 10 minutes
     private static final long TICK_INTERVAL_MS = 1_000L;
+    private static final long SCHEDULE_TICK_INTERVAL_MS = 30_000L;
 
     private final Context context;
     private final DevicePolicyHelper dph;
@@ -26,6 +30,14 @@ public class StatusController {
     private StatusUiState currentState;
     private StateChangeListener stateChangeListener;
     private CountDownTimer countdownTimer;
+    private final Handler scheduleTickHandler = new Handler(Looper.getMainLooper());
+    private final Runnable scheduleTick = new Runnable() {
+        @Override
+        public void run() {
+            refreshScheduleState();
+            scheduleTickHandler.postDelayed(this, SCHEDULE_TICK_INTERVAL_MS);
+        }
+    };
 
     public interface StateChangeListener {
         void onStateChanged(StatusUiState newState);
@@ -43,6 +55,23 @@ public class StatusController {
                 false,
                 "10:00 remaining"
         );
+        refreshScheduleState();
+        // Periodic ticking is started/stopped by the host Activity's onResume/onPause
+        // (see startScheduleTicking/stopScheduleTicking) so it only runs while the
+        // status screen is actually visible, not for as long as the Activity merely
+        // exists in memory.
+    }
+
+    /** Call from the host Activity's onResume — (re)starts the periodic countdown refresh. */
+    public void startScheduleTicking() {
+        scheduleTickHandler.removeCallbacks(scheduleTick);
+        refreshScheduleState();
+        scheduleTickHandler.postDelayed(scheduleTick, SCHEDULE_TICK_INTERVAL_MS);
+    }
+
+    /** Call from the host Activity's onPause — stops ticking while the screen isn't visible. */
+    public void stopScheduleTicking() {
+        scheduleTickHandler.removeCallbacks(scheduleTick);
     }
 
     public void setStateChangeListener(StateChangeListener listener) {
@@ -125,6 +154,61 @@ public class StatusController {
         }
     }
 
+    // ── Schedule status ────────────────────────────────────────────────────
+
+    /**
+     * Recomputes the current schedule lock state and refreshes the UI. Safe to call
+     * repeatedly (e.g. from a periodic UI tick) — it never mutates the schedule itself.
+     */
+    public void refreshScheduleState() {
+        boolean enabled = ScheduleManager.isScheduleEnabled(context);
+        boolean locked = enabled && ScheduleManager.isCurrentlyLocked(context);
+        String text = buildScheduleStatusText(enabled, locked);
+        updateState(currentState.withSchedule(enabled, locked, text));
+    }
+
+    /**
+     * Child manually opts back into locked mode early, during an otherwise-unlocked
+     * schedule window.
+     */
+    public void onScheduleLockNowClicked() {
+        Log.i(TAG, "onScheduleLockNowClicked: child manually opted back into locked mode early");
+        ScheduleManager.setManualOverride(context, true);
+        CategoryManager.applyEnforcement(context);
+        refreshScheduleState();
+    }
+
+    private String buildScheduleStatusText(boolean enabled, boolean locked) {
+        if (!enabled) return "";
+
+        if (locked && ScheduleManager.isFullDayLock(context)) {
+            return "Blocked 24 hours";
+        }
+
+        int[] boundary = locked ? ScheduleManager.getLockEnd(context) : ScheduleManager.getLockStart(context);
+        String time = String.format(Locale.US, "%02d:%02d", boundary[0], boundary[1]);
+        String action = locked ? "Unlocks" : "Locks";
+
+        Long trustedNow = TrustedTimeManager.getCurrentTrustedEpochMillis(context);
+        if (trustedNow == null) {
+            // No trusted time yet — can't compute a countdown, fall back to just the clock time.
+            return (locked ? "Locked until " : "Unlocked until ") + time;
+        }
+
+        long millisRemaining = ScheduleManager.millisUntilNextBoundary(context, trustedNow);
+        return action + " in " + formatCountdown(millisRemaining) + " (at " + time + ")";
+    }
+
+    private String formatCountdown(long millis) {
+        long totalMinutes = Math.max(0, millis / 60_000L);
+        long hours = totalMinutes / 60;
+        long minutes = totalMinutes % 60;
+        if (hours > 0) {
+            return hours + "h " + minutes + "m";
+        }
+        return minutes + "m";
+    }
+
     // ── Timer Management ──────────────────────────────────────────────────
 
     private void startMaintenanceTimer() {
@@ -167,6 +251,7 @@ public class StatusController {
      */
     public void cleanup() {
         cancelTimer();
+        scheduleTickHandler.removeCallbacks(scheduleTick);
         this.stateChangeListener = null;
     }
 }

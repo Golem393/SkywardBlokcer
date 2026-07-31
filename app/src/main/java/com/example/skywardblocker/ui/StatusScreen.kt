@@ -174,6 +174,24 @@ fun StatusScreen(
                     when (state.maintenanceState) {
                         MaintenanceState.NORMAL -> {
                             if (state.isDeviceOwner) {
+                                if (state.isScheduleEnabled) {
+                                    Text(
+                                        text = state.scheduleStatusText,
+                                        fontSize = 16.sp,
+                                        modifier = Modifier.padding(bottom = 8.dp),
+                                        textAlign = TextAlign.Center,
+                                        color = Color.DarkGray
+                                    )
+                                    if (!state.isScheduleCurrentlyLocked) {
+                                        Button(
+                                            onClick = { controller.onScheduleLockNowClicked() },
+                                            modifier = Modifier.fillMaxWidth(),
+                                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1B2A3C))
+                                        ) {
+                                            Text("Lock Now", color = Color.White)
+                                        }
+                                    }
+                                }
                                 Button(
                                     onClick = { controller.onStartLoginClicked() },
                                     modifier = Modifier.fillMaxWidth(),

@@ -59,7 +59,16 @@ public class MainActivity extends AppCompatActivity {
         // Re-apply schedule-gated enforcement each time the activity resumes
         CategoryManager.applyEnforcement(this);
         if (statusController != null) {
-            statusController.refreshScheduleState();
+            statusController.startScheduleTicking();
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        // Stop the periodic countdown refresh while the screen isn't visible
+        if (statusController != null) {
+            statusController.stopScheduleTicking();
         }
     }
 
