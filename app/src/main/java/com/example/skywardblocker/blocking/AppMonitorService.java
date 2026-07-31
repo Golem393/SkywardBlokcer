@@ -37,7 +37,7 @@ public class AppMonitorService extends Service {
     private static final String CHANNEL_ID = "skyward_monitor_channel";
     private static final int NOTIFICATION_ID = 4091;
 
-    private static final long SAFETY_TICK_MS = 60_000L;
+    private static final long SAFETY_TICK_MS = 180_000L; // 3 minutes
 
     private PackageChangeReceiver packageChangeReceiver;
     private boolean isReceiverRegistered = false;
@@ -52,6 +52,15 @@ public class AppMonitorService extends Service {
                 TrustedTimeManager.syncNow(AppMonitorService.this, success -> {
                     if (success) ScheduleAlarmScheduler.rescheduleAll(AppMonitorService.this);
                 });
+            }
+            if (!ScheduleAlarmScheduler.canScheduleExactAlarms(AppMonitorService.this)) {
+                // This device doesn't grant exact-alarm scheduling (some OS versions/OEMs
+                // don't apply the Device-Owner exemption to devices provisioned via
+                // `dpm set-device-owner`), so the boundary alarm runs inexact and Doze/App
+                // Standby may delay it. Recheck enforcement periodically as a backstop —
+                // scoped to only this case, so devices with working exact alarms pay
+                // nothing extra.
+                CategoryManager.applyEnforcement(AppMonitorService.this);
             }
             tickHandler.postDelayed(this, SAFETY_TICK_MS);
         }

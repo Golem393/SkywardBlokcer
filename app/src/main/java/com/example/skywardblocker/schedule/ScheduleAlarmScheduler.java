@@ -49,8 +49,8 @@ public class ScheduleAlarmScheduler {
         long triggerElapsed = SystemClock.elapsedRealtime() + millisToNext;
 
         try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !am.canScheduleExactAlarms()) {
-                Log.w(TAG, "Exact alarms unavailable — falling back to inexact alarm (safety tick covers correctness)");
+            if (!canScheduleExactAlarms(appContext)) {
+                Log.w(TAG, "Exact alarms unavailable — falling back to inexact alarm (AppMonitorService backstop covers correctness)");
                 am.setAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP, triggerElapsed, pi);
             } else {
                 am.setExactAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP, triggerElapsed, pi);
@@ -59,6 +59,19 @@ public class ScheduleAlarmScheduler {
         } catch (Exception e) {
             Log.e(TAG, "Failed to schedule boundary alarm", e);
         }
+    }
+
+    /**
+     * Whether this device grants exact-alarm scheduling. Expected to be true automatically
+     * for Device Owner apps, but some OS versions/OEMs don't apply that exemption to devices
+     * provisioned via `dpm set-device-owner` (vs. full managed provisioning) — when false,
+     * the boundary alarm falls back to inexact, which Doze/App Standby may delay, so
+     * AppMonitorService uses this to decide whether it needs to run a periodic backstop.
+     */
+    public static boolean canScheduleExactAlarms(Context context) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return true;
+        AlarmManager am = (AlarmManager) context.getApplicationContext().getSystemService(Context.ALARM_SERVICE);
+        return am != null && am.canScheduleExactAlarms();
     }
 
     private static PendingIntent buildPendingIntent(Context context) {
