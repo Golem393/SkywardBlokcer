@@ -3,6 +3,7 @@ package com.example.skywardblocker.api;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.util.Log;
+import com.example.skywardblocker.time.TrustedTimeManager;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
@@ -104,6 +105,11 @@ public class ApiClient {
                 int code = conn.getResponseCode();
                 Log.d(TAG, "Response " + code + " from " + path);
 
+                long dateHeader = conn.getHeaderFieldDate("Date", -1);
+                if (dateHeader > 0) {
+                    TrustedTimeManager.recordTrustedTime(context, dateHeader);
+                }
+
                 BufferedReader reader = new BufferedReader(new InputStreamReader(
                         code >= 400 ? conn.getErrorStream() : conn.getInputStream()));
                 StringBuilder sb = new StringBuilder();
@@ -151,6 +157,42 @@ public class ApiClient {
             } catch (Exception e) {
                 Log.e(TAG, "fetchAppCategory failed for " + packageName, e);
                 callback.onError(e.getMessage());
+            }
+        }).start();
+    }
+
+    /**
+     * Active trusted-time sync: issues a lightweight HEAD request to the configured base URL
+     * and hands back the server's HTTP "Date" response header as trusted UTC epoch millis.
+     * Used by TrustedTimeManager when no other API call is imminent (e.g. right after a
+     * connectivity change, before any category lookup fires).
+     */
+    public static void fetchTrustedTime(Context context, ApiCallback<Long> callback) {
+        new Thread(() -> {
+            HttpURLConnection conn = null;
+            try {
+                String baseUrl = getBaseUrl(context);
+                if (baseUrl == null || baseUrl.trim().isEmpty()) {
+                    callback.onError("no base_url configured");
+                    return;
+                }
+                URL url = new URL(baseUrl);
+                conn = (HttpURLConnection) url.openConnection();
+                conn.setConnectTimeout(10000);
+                conn.setReadTimeout(10000);
+                conn.setRequestMethod("HEAD");
+                conn.connect();
+                long dateHeader = conn.getHeaderFieldDate("Date", -1);
+                if (dateHeader > 0) {
+                    callback.onSuccess(dateHeader);
+                } else {
+                    callback.onError("response had no Date header");
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "fetchTrustedTime failed", e);
+                callback.onError(e.getMessage());
+            } finally {
+                if (conn != null) conn.disconnect();
             }
         }).start();
     }

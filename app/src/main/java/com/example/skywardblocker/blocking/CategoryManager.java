@@ -7,6 +7,7 @@ import android.util.Log;
 
 import com.example.skywardblocker.api.ApiClient;
 import com.example.skywardblocker.admin.DevicePolicyHelper;
+import com.example.skywardblocker.schedule.ScheduleManager;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -104,7 +105,7 @@ public class CategoryManager {
     public static void initializeCache(Context context) {
         loadCacheIfNeeded(context);
         scanInstalledApps(context);
-        enforceBlockedApps(context);
+        applyEnforcement(context);
     }
 
     /**
@@ -117,11 +118,23 @@ public class CategoryManager {
             Log.d(TAG, "Package " + packageName + " already in cache (" + existingCat + "). Checking block status...");
             if (BLOCKED_CATEGORIES.contains(existingCat)) {
                 Log.i(TAG, "New install " + packageName + " matches blocked category (" + existingCat + ") — suspending instantly!");
-                suspendApp(context, packageName, true);
+                if (ScheduleManager.shouldEnforceNow(context)) {
+                    suspendApp(context, packageName, true);
+                }
             }
             return;
         }
         if (pendingLookups.contains(packageName)) return;
+
+        String baseUrl = ApiClient.getBaseUrl(context);
+        if (baseUrl == null || baseUrl.trim().isEmpty()) {
+            // Config hasn't been pushed yet (e.g. right after set-device-owner, before the
+            // desktop installer's push_config lands) — every lookup would fail identically.
+            // Skip quietly; nothing gets cached, so scanInstalledApps() retries this package
+            // the next time initializeCache() runs (push_config, next boot, next app open).
+            return;
+        }
+
         pendingLookups.add(packageName);
 
         Log.d(TAG, "Resolving category for: " + packageName);
@@ -137,7 +150,7 @@ public class CategoryManager {
                 Log.d(TAG, "Cached: " + packageName + " → " + category);
 
                 // If blocked, suspend immediately via Device Owner
-                if (BLOCKED_CATEGORIES.contains(category)) {
+                if (BLOCKED_CATEGORIES.contains(category) && ScheduleManager.shouldEnforceNow(context)) {
                     suspendApp(context, packageName, true);
                 }
             }
@@ -199,6 +212,55 @@ public class CategoryManager {
     }
 
     /**
+     * Schedule-aware entry point: suspends cached blocked-category apps if enforcement
+     * should currently be active, otherwise un-suspends them. Call this instead of
+     * enforceBlockedApps() directly anywhere the schedule needs to gate blocking.
+     */
+    public static void applyEnforcement(Context context) {
+        if (ScheduleManager.shouldEnforceNow(context)) {
+            enforceBlockedApps(context);
+        } else {
+            unsuspendCachedBlockedApps(context);
+        }
+    }
+
+    /**
+     * Un-suspends all installed apps in blocked categories (mirrors enforceBlockedApps()
+     * but reverses it). Used when the schedule enters an unlocked window.
+     */
+    public static void unsuspendCachedBlockedApps(Context context) {
+        DevicePolicyHelper dph = getDph(context);
+        if (!dph.isDeviceOwner()) {
+            Log.w(TAG, "unsuspendCachedBlockedApps: not Device Owner, skipping");
+            return;
+        }
+
+        PackageManager pm = context.getPackageManager();
+        List<String> toUnsuspend = new ArrayList<>();
+        synchronized (CategoryManager.class) {
+            for (Map.Entry<String, String> entry : cache.entrySet()) {
+                if (BLOCKED_CATEGORIES.contains(entry.getValue())) {
+                    try {
+                        pm.getPackageInfo(entry.getKey(), 0);
+                        toUnsuspend.add(entry.getKey());
+                    } catch (PackageManager.NameNotFoundException ignored) {
+                        // Not installed locally; ignore
+                    }
+                }
+            }
+        }
+
+        if (!toUnsuspend.isEmpty()) {
+            String[] packages = toUnsuspend.toArray(new String[0]);
+            String[] failed = dph.setPackagesSuspended(packages, false);
+            Log.d(TAG, "Unsuspended " + (packages.length - failed.length) + "/" + packages.length + " apps for unlocked schedule window");
+            if (failed.length > 0) {
+                Log.w(TAG, "Failed to unsuspend: " + Arrays.toString(failed));
+            }
+        }
+    }
+
+    /**
      * Un-suspends all installed applications on the device.
      * Called before relinquishing Device Owner status during deactivation.
      */
@@ -230,6 +292,12 @@ public class CategoryManager {
     }
 
     private static void scanInstalledApps(Context context) {
+        String baseUrl = ApiClient.getBaseUrl(context);
+        if (baseUrl == null || baseUrl.trim().isEmpty()) {
+            Log.d(TAG, "scanInstalledApps: no config pushed yet, skipping category resolution for now (will retry once config lands)");
+            return;
+        }
+
         PackageManager pm = context.getPackageManager();
         List<ApplicationInfo> apps = pm.getInstalledApplications(0);
 

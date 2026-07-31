@@ -150,6 +150,16 @@ public class DevicePolicyHelper {
     }
 
     /**
+     * Blocks the user from manually changing date, time, or timezone (Settings > Date & Time
+     * becomes non-editable). Enabling this also forces automatic date/time and automatic
+     * timezone to stay on, so the schedule feature's boundary checks can trust
+     * TimeZone.getDefault() instead of it being a manual bypass vector.
+     */
+    public void setDateTimeConfigDisabled(boolean disabled) {
+        setUserRestriction(UserManager.DISALLOW_CONFIG_DATE_TIME, disabled);
+    }
+
+    /**
      * Toggles USB debugging restrictions for temporary maintenance mode.
      * Uses boxed Boolean to support method reference matching for Consumer<Boolean>.
      *
@@ -183,6 +193,10 @@ public class DevicePolicyHelper {
     /**
      * Makes Skyward itself uninstallable and blocks tampering.
      * Call this after Device Owner is confirmed active.
+     *
+     * Deliberately does NOT touch USB debugging — the desktop installer still needs ADB
+     * to push config/schedule and launch the app right after Device Owner is set. Call
+     * finalizeProvisioning() once that's done to seal USB debugging.
      */
     public void lockdownSkyward() {
         if (!isDeviceOwner()) {
@@ -196,18 +210,32 @@ public class DevicePolicyHelper {
         // Prevent factory reset bypass
         setFactoryResetDisabled(true);
 
-        // Prevent USB debugging only if ALLOW_USB_DEBUGGING is false (production mode)
-        if (!ALLOW_USB_DEBUGGING) {
-            setDebuggingDisabled(true);
-        } else {
-            Log.i(TAG, "lockdownSkyward: ALLOW_USB_DEBUGGING is true — keeping USB debugging open for developer testing!");
-            setDebuggingDisabled(false);
-        }
-
         // Prevent Safe Mode bypass (API 33+)
         setSafeModeDisabled(true);
 
-        Log.d(TAG, "lockdownSkyward: all protections applied");
+        // Prevent manual clock/timezone tampering (schedule anti-bypass)
+        setDateTimeConfigDisabled(true);
+
+        Log.d(TAG, "lockdownSkyward: protections applied (USB debugging left as-is until finalizeProvisioning())");
+    }
+
+    /**
+     * Seals USB debugging once the desktop installer has finished pushing config/schedule
+     * and launching the app. Called via the ADB FINALIZE_SETUP broadcast — the last thing
+     * the installer does before disconnecting, since it can't reach the device over ADB
+     * anymore afterward (by design, same as any other production lockdown).
+     */
+    public void finalizeProvisioning() {
+        if (!isDeviceOwner()) {
+            Log.w(TAG, "finalizeProvisioning: not Device Owner, skipping");
+            return;
+        }
+        if (!ALLOW_USB_DEBUGGING) {
+            setDebuggingDisabled(true);
+            Log.i(TAG, "finalizeProvisioning: USB debugging locked down");
+        } else {
+            Log.i(TAG, "finalizeProvisioning: ALLOW_USB_DEBUGGING is true — keeping USB debugging open for developer testing!");
+        }
     }
 
     /**
@@ -220,6 +248,7 @@ public class DevicePolicyHelper {
         setFactoryResetDisabled(false);
         setDebuggingDisabled(false);
         setSafeModeDisabled(false);
+        setDateTimeConfigDisabled(false);
 
         Log.d(TAG, "unlockSkyward: all protections removed");
     }

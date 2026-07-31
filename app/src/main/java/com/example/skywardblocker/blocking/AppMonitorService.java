@@ -8,12 +8,16 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Build;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.util.Log;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
 import com.example.skywardblocker.receiver.PackageChangeReceiver;
+import com.example.skywardblocker.schedule.ScheduleAlarmScheduler;
+import com.example.skywardblocker.time.TrustedTimeManager;
 
 
 
@@ -33,8 +37,25 @@ public class AppMonitorService extends Service {
     private static final String CHANNEL_ID = "skyward_monitor_channel";
     private static final int NOTIFICATION_ID = 4091;
 
+    private static final long SAFETY_TICK_MS = 60_000L;
+
     private PackageChangeReceiver packageChangeReceiver;
     private boolean isReceiverRegistered = false;
+    private final Handler tickHandler = new Handler(Looper.getMainLooper());
+
+    private final Runnable safetyTick = new Runnable() {
+        @Override
+        public void run() {
+            if (TrustedTimeManager.getCurrentTrustedEpochMillis(AppMonitorService.this) == null) {
+                // Bounded polling backstop, independent of the ConnectivityManager callback:
+                // keep retrying the trusted-time sync while no anchor exists.
+                TrustedTimeManager.syncNow(AppMonitorService.this, success -> {
+                    if (success) ScheduleAlarmScheduler.rescheduleAll(AppMonitorService.this);
+                });
+            }
+            tickHandler.postDelayed(this, SAFETY_TICK_MS);
+        }
+    };
 
     public static void start(Context context) {
         try {
@@ -62,6 +83,9 @@ public class AppMonitorService extends Service {
         Log.d(TAG, "AppMonitorService onCreate");
         setupForegroundNotification();
         registerPackageReceiver();
+        TrustedTimeManager.registerNetworkCallback(this);
+        tickHandler.removeCallbacks(safetyTick);
+        tickHandler.postDelayed(safetyTick, SAFETY_TICK_MS);
     }
 
     @Override
@@ -69,8 +93,9 @@ public class AppMonitorService extends Service {
         setupForegroundNotification();
         registerPackageReceiver();
 
-        // Also ensure cached blocked apps are actively enforced whenever service commands start
-        CategoryManager.enforceBlockedApps(this);
+        // Also ensure cached blocked apps are actively (un)enforced per the current schedule
+        // whenever service commands start
+        CategoryManager.applyEnforcement(this);
 
         return START_STICKY; // Ensure OS restarts service if memory ever reloads
     }
@@ -134,6 +159,8 @@ public class AppMonitorService extends Service {
     public void onDestroy() {
         super.onDestroy();
         Log.w(TAG, "AppMonitorService onDestroy");
+        tickHandler.removeCallbacks(safetyTick);
+        TrustedTimeManager.unregisterNetworkCallback(this);
         if (isReceiverRegistered && packageChangeReceiver != null) {
             try {
                 unregisterReceiver(packageChangeReceiver);

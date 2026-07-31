@@ -7,6 +7,7 @@ import android.util.Log;
 import com.example.skywardblocker.admin.DevicePolicyHelper;
 import com.example.skywardblocker.blocking.AppMonitorService;
 import com.example.skywardblocker.blocking.CategoryManager;
+import com.example.skywardblocker.schedule.ScheduleAlarmScheduler;
 
 /**
  * Listens for system boot and package replacement events to automatically resume
@@ -29,6 +30,11 @@ public class BootReceiver extends BroadcastReceiver {
                 Log.i(TAG, "Device Owner confirmed after " + action + " — resuming AppMonitorService and category scan!");
                 AppMonitorService.start(context);
                 CategoryManager.initializeCache(context);
+                // ELAPSED_REALTIME_WAKEUP alarms don't survive reboot; re-arm the next
+                // schedule boundary. If no trusted-time anchor exists yet this is a no-op —
+                // AppMonitorService's ConnectivityManager callback picks up the sync as
+                // soon as connectivity actually validates, and reschedules from there.
+                ScheduleAlarmScheduler.rescheduleAll(context);
             } else {
                 Log.d(TAG, "BootReceiver: not Device Owner yet; skipping start.");
             }

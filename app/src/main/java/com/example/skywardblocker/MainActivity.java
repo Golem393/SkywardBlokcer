@@ -56,8 +56,11 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        // Re-enforce blocked apps each time the activity resumes
-        CategoryManager.enforceBlockedApps(this);
+        // Re-apply schedule-gated enforcement each time the activity resumes
+        CategoryManager.applyEnforcement(this);
+        if (statusController != null) {
+            statusController.refreshScheduleState();
+        }
     }
 
     @Override

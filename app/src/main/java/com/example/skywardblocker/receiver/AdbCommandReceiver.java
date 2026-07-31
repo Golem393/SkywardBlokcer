@@ -8,6 +8,8 @@ import com.example.skywardblocker.admin.DevicePolicyHelper;
 import com.example.skywardblocker.api.ApiClient;
 import com.example.skywardblocker.blocking.AppMonitorService;
 import com.example.skywardblocker.blocking.CategoryManager;
+import com.example.skywardblocker.schedule.ScheduleAlarmScheduler;
+import com.example.skywardblocker.schedule.ScheduleManager;
 
 /**
  * Listens for commands dispatched over ADB from the desktop companion app (or during development).
@@ -20,6 +22,17 @@ import com.example.skywardblocker.blocking.CategoryManager;
  *      adb shell am broadcast -a com.example.skywardblocker.PUSH_CONFIG \
  *        -n com.example.skywardblocker/.receiver.AdbCommandReceiver \
  *        --es base_url "https://..." --es api_key "api_..." --es dns_hostname "..."
+ *
+ *   3) Push a daily locked-hours schedule from desktop companion app:
+ *      adb shell am broadcast -a com.example.skywardblocker.PUSH_SCHEDULE \
+ *        -n com.example.skywardblocker/.receiver.AdbCommandReceiver \
+ *        --ei lock_start_hour 8 --ei lock_start_minute 0 \
+ *        --ei lock_end_hour 22 --ei lock_end_minute 0 --es timezone_id "Europe/Zurich"
+ *
+ *   4) Finalize provisioning (seals USB debugging) — sent once the desktop installer has
+ *      finished pushing config/schedule and launching the app:
+ *      adb shell am broadcast -a com.example.skywardblocker.FINALIZE_SETUP \
+ *        -n com.example.skywardblocker/.receiver.AdbCommandReceiver
  */
 public class AdbCommandReceiver extends BroadcastReceiver {
 
@@ -27,6 +40,8 @@ public class AdbCommandReceiver extends BroadcastReceiver {
 
     public static final String ACTION_CLEAR_OWNER = "com.example.skywardblocker.CLEAR_OWNER";
     public static final String ACTION_PUSH_CONFIG = "com.example.skywardblocker.PUSH_CONFIG";
+    public static final String ACTION_PUSH_SCHEDULE = "com.example.skywardblocker.PUSH_SCHEDULE";
+    public static final String ACTION_FINALIZE_SETUP = "com.example.skywardblocker.FINALIZE_SETUP";
 
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -66,6 +81,28 @@ public class AdbCommandReceiver extends BroadcastReceiver {
                 CategoryManager.initializeCache(context);
                 AppMonitorService.start(context);
                 Log.i(TAG, "Full Skyward protection activated via ADB config push!");
+            }
+        }
+        else if (ACTION_PUSH_SCHEDULE.equals(action)) {
+            int startHour = intent.getIntExtra("lock_start_hour", 0);
+            int startMinute = intent.getIntExtra("lock_start_minute", 0);
+            int endHour = intent.getIntExtra("lock_end_hour", 0);
+            int endMinute = intent.getIntExtra("lock_end_minute", 0);
+            String timezoneId = intent.getStringExtra("timezone_id");
+
+            Log.i(TAG, "Received PUSH_SCHEDULE broadcast: locked " + startHour + ":" + startMinute
+                    + " -> " + endHour + ":" + endMinute + " (tz=" + timezoneId + ")");
+            ScheduleManager.saveSchedule(context, startHour, startMinute, endHour, endMinute, timezoneId);
+            ScheduleAlarmScheduler.rescheduleAll(context);
+            CategoryManager.applyEnforcement(context);
+        }
+        else if (ACTION_FINALIZE_SETUP.equals(action)) {
+            Log.i(TAG, "Received FINALIZE_SETUP broadcast — sealing USB debugging.");
+            DevicePolicyHelper helper = new DevicePolicyHelper(context);
+            if (helper.isDeviceOwner()) {
+                helper.finalizeProvisioning();
+            } else {
+                Log.w(TAG, "App is not currently Device Owner; ignoring finalize command.");
             }
         }
     }
