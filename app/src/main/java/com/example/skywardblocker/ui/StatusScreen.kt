@@ -192,6 +192,36 @@ fun StatusScreen(
                                         }
                                     }
                                 }
+                                if (state.isBlockingScheduled) {
+                                    if (state.isGraceActive) {
+                                        Text(
+                                            text = state.graceStatusText,
+                                            fontSize = 16.sp,
+                                            modifier = Modifier.padding(bottom = 8.dp),
+                                            textAlign = TextAlign.Center,
+                                            color = Color(0xFF2E7D32)
+                                        )
+                                    } else if (state.graceUsesRemaining > 0) {
+                                        Button(
+                                            onClick = { controller.onUnlockBreakClicked() },
+                                            modifier = Modifier.fillMaxWidth(),
+                                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32))
+                                        ) {
+                                            Text(
+                                                "Unlock apps for 2 min (${state.graceUsesRemaining} left today)",
+                                                color = Color.White
+                                            )
+                                        }
+                                    } else {
+                                        Text(
+                                            text = "No unlocks left today",
+                                            fontSize = 14.sp,
+                                            modifier = Modifier.padding(bottom = 8.dp),
+                                            textAlign = TextAlign.Center,
+                                            color = Color.Gray
+                                        )
+                                    }
+                                }
                                 Button(
                                     onClick = { controller.onStartLoginClicked() },
                                     modifier = Modifier.fillMaxWidth(),

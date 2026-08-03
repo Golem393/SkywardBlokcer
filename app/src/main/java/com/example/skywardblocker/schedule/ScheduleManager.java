@@ -140,11 +140,23 @@ public class ScheduleManager {
     }
 
     /**
-     * Whether app-blocking enforcement should be active right now. If no schedule has ever
-     * been pushed, enforcement is always on (preserves pre-scheduling always-on behavior).
+     * Whether blocking is currently called for by the schedule alone (ignoring any active
+     * grace period). If no schedule has ever been pushed, this is always true (preserves
+     * pre-scheduling always-on behavior). Used both by shouldEnforceNow() and by the UI to
+     * decide when a grace-period "unlock" button is relevant to offer.
+     */
+    public static boolean isBlockingScheduled(Context context) {
+        return !isScheduleEnabled(context) || isCurrentlyLocked(context);
+    }
+
+    /**
+     * Whether app-blocking enforcement should be active right now. An active grace period
+     * (see GracePeriodManager) temporarily overrides the schedule, letting the device
+     * holder unlock apps for a short, limited-per-day window.
      */
     public static boolean shouldEnforceNow(Context context) {
-        return !isScheduleEnabled(context) || isCurrentlyLocked(context);
+        if (GracePeriodManager.isGraceActive(context)) return false;
+        return isBlockingScheduled(context);
     }
 
     /**

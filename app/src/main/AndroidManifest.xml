@@ -93,5 +93,14 @@
             </intent-filter>
         </receiver>
 
+        <!-- Re-locks apps when an active grace period (temporary unlock) elapses -->
+        <receiver
+            android:name=".schedule.GracePeriodAlarmReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.example.skywardblocker.ACTION_GRACE_END" />
+            </intent-filter>
+        </receiver>
+
     </application>
 </manifest>

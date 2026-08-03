@@ -9,6 +9,8 @@ import android.widget.Toast;
 import com.example.skywardblocker.admin.DevicePolicyHelper;
 import com.example.skywardblocker.api.ApiClient;
 import com.example.skywardblocker.blocking.CategoryManager;
+import com.example.skywardblocker.schedule.GracePeriodAlarmScheduler;
+import com.example.skywardblocker.schedule.GracePeriodManager;
 import com.example.skywardblocker.schedule.ScheduleManager;
 import com.example.skywardblocker.time.TrustedTimeManager;
 import java.util.Locale;
@@ -30,6 +32,7 @@ public class StatusController {
     private StatusUiState currentState;
     private StateChangeListener stateChangeListener;
     private CountDownTimer countdownTimer;
+    private CountDownTimer graceCountdownTimer;
     private final Handler scheduleTickHandler = new Handler(Looper.getMainLooper());
     private final Runnable scheduleTick = new Runnable() {
         @Override
@@ -164,7 +167,20 @@ public class StatusController {
         boolean enabled = ScheduleManager.isScheduleEnabled(context);
         boolean locked = enabled && ScheduleManager.isCurrentlyLocked(context);
         String text = buildScheduleStatusText(enabled, locked);
-        updateState(currentState.withSchedule(enabled, locked, text));
+
+        boolean blockingScheduled = ScheduleManager.isBlockingScheduled(context);
+        boolean graceActive = GracePeriodManager.isGraceActive(context);
+        int graceUsesRemaining = GracePeriodManager.usesRemainingToday(context);
+        String graceText = graceActive
+                ? "Unlocked for " + formatMmSs(GracePeriodManager.remainingMillis(context))
+                : "";
+
+        if (graceActive && graceCountdownTimer == null) {
+            startGraceCountdown(GracePeriodManager.remainingMillis(context));
+        }
+
+        updateState(currentState.withSchedule(enabled, locked, text)
+                .withGrace(blockingScheduled, graceActive, graceText, graceUsesRemaining));
     }
 
     /**
@@ -175,6 +191,22 @@ public class StatusController {
         Log.i(TAG, "onScheduleLockNowClicked: child manually opted back into locked mode early");
         ScheduleManager.setManualOverride(context, true);
         CategoryManager.applyEnforcement(context);
+        refreshScheduleState();
+    }
+
+    /**
+     * Starts a short grace period that temporarily lifts blocking, up to
+     * GracePeriodManager.MAX_USES_PER_DAY times per day. No-ops if the quota is already
+     * used up, a grace period is already active, or there's no trusted-time anchor yet.
+     */
+    public void onUnlockBreakClicked() {
+        if (!GracePeriodManager.startGrace(context)) {
+            Log.w(TAG, "onUnlockBreakClicked: cannot start grace period right now");
+            return;
+        }
+        Log.i(TAG, "onUnlockBreakClicked: grace period started");
+        CategoryManager.applyEnforcement(context);
+        GracePeriodAlarmScheduler.scheduleGraceEnd(context, GracePeriodManager.DURATION_MS);
         refreshScheduleState();
     }
 
@@ -207,6 +239,44 @@ public class StatusController {
             return hours + "h " + minutes + "m";
         }
         return minutes + "m";
+    }
+
+    private String formatMmSs(long millis) {
+        long totalSeconds = Math.max(0, millis / 1000L);
+        long minutes = totalSeconds / 60L;
+        long seconds = totalSeconds % 60L;
+        return String.format(Locale.US, "%d:%02d", minutes, seconds);
+    }
+
+    /**
+     * Drives a 1-second-resolution UI countdown for the active grace period. Re-attaches
+     * automatically from refreshScheduleState() if the screen resumes mid-grace, so it
+     * isn't limited to only the moment the button was tapped.
+     */
+    private void startGraceCountdown(long durationMillis) {
+        cancelGraceTimer();
+        graceCountdownTimer = new CountDownTimer(durationMillis, TICK_INTERVAL_MS) {
+            @Override
+            public void onTick(long millisUntilFinished) {
+                refreshScheduleState();
+            }
+
+            @Override
+            public void onFinish() {
+                graceCountdownTimer = null;
+                Log.i(TAG, "Grace period ended: resuming enforcement");
+                CategoryManager.applyEnforcement(context);
+                GracePeriodAlarmScheduler.cancel(context);
+                refreshScheduleState();
+            }
+        }.start();
+    }
+
+    private void cancelGraceTimer() {
+        if (graceCountdownTimer != null) {
+            graceCountdownTimer.cancel();
+            graceCountdownTimer = null;
+        }
     }
 
     // ── Timer Management ──────────────────────────────────────────────────
@@ -251,6 +321,7 @@ public class StatusController {
      */
     public void cleanup() {
         cancelTimer();
+        cancelGraceTimer();
         scheduleTickHandler.removeCallbacks(scheduleTick);
         this.stateChangeListener = null;
     }
