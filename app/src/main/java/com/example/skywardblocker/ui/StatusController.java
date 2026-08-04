@@ -213,6 +213,10 @@ public class StatusController {
     private String buildScheduleStatusText(boolean enabled, boolean locked) {
         if (!enabled) return "";
 
+        if (ScheduleManager.isExpired(context)) {
+            return "Schedule finished";
+        }
+
         if (locked && ScheduleManager.isFullDayLock(context)) {
             return "Blocked 24 hours";
         }
@@ -228,6 +232,10 @@ public class StatusController {
         }
 
         long millisRemaining = ScheduleManager.millisUntilNextBoundary(context, trustedNow);
+        if (millisRemaining == ScheduleManager.NO_BOUNDARY) {
+            // Nothing left in the block period — the schedule has run its course.
+            return "Schedule finished";
+        }
         return action + " in " + formatCountdown(millisRemaining) + " (at " + time + ")";
     }
 

@@ -46,6 +46,10 @@ public class ScheduleAlarmScheduler {
         }
 
         long millisToNext = ScheduleManager.millisUntilNextBoundary(appContext, trustedNow);
+        if (millisToNext == ScheduleManager.NO_BOUNDARY) {
+            Log.i(TAG, "ScheduleAlarmScheduler: schedule has expired, no further boundaries to arm");
+            return;
+        }
         long triggerElapsed = SystemClock.elapsedRealtime() + millisToNext;
 
         try {

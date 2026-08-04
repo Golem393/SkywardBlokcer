@@ -23,11 +23,16 @@ import com.example.skywardblocker.schedule.ScheduleManager;
  *        -n com.example.skywardblocker/.receiver.AdbCommandReceiver \
  *        --es base_url "https://..." --es api_key "api_..." --es dns_hostname "..."
  *
- *   3) Push a daily locked-hours schedule from desktop companion app:
+ *   3) Push a locked-hours schedule from desktop companion app. days_mask is a weekday
+ *      bitmask (bit 0 = Sunday … bit 6 = Saturday) and active_from/active_until bound the
+ *      block period in epoch millis — once active_until passes the schedule expires and the
+ *      device unblocks permanently:
  *      adb shell am broadcast -a com.example.skywardblocker.PUSH_SCHEDULE \
  *        -n com.example.skywardblocker/.receiver.AdbCommandReceiver \
  *        --ei lock_start_hour 8 --ei lock_start_minute 0 \
- *        --ei lock_end_hour 22 --ei lock_end_minute 0 --es timezone_id "Europe/Zurich"
+ *        --ei lock_end_hour 22 --ei lock_end_minute 0 \
+ *        --ei days_mask 62 --el active_from 1754179200000 --el active_until 1754784000000 \
+ *        --es timezone_id "Europe/Zurich"
  *
  *   4) Finalize provisioning (seals USB debugging) — sent once the desktop installer has
  *      finished pushing config/schedule and launching the app:
@@ -88,11 +93,18 @@ public class AdbCommandReceiver extends BroadcastReceiver {
             int startMinute = intent.getIntExtra("lock_start_minute", 0);
             int endHour = intent.getIntExtra("lock_end_hour", 0);
             int endMinute = intent.getIntExtra("lock_end_minute", 0);
+            int daysMask = intent.getIntExtra("days_mask", ScheduleManager.ALL_DAYS);
+            long activeFrom = intent.getLongExtra("active_from", 0L);
+            long activeUntil = intent.getLongExtra("active_until", Long.MAX_VALUE);
             String timezoneId = intent.getStringExtra("timezone_id");
 
             Log.i(TAG, "Received PUSH_SCHEDULE broadcast: locked " + startHour + ":" + startMinute
-                    + " -> " + endHour + ":" + endMinute + " (tz=" + timezoneId + ")");
-            ScheduleManager.saveSchedule(context, startHour, startMinute, endHour, endMinute, timezoneId);
+                    + " -> " + endHour + ":" + endMinute
+                    + " days=" + Integer.toBinaryString(daysMask)
+                    + " from=" + activeFrom + " until=" + activeUntil
+                    + " (tz=" + timezoneId + ")");
+            ScheduleManager.saveSchedule(context, startHour, startMinute, endHour, endMinute,
+                    daysMask, activeFrom, activeUntil, timezoneId);
             ScheduleAlarmScheduler.rescheduleAll(context);
             CategoryManager.applyEnforcement(context);
         }
