@@ -196,13 +196,12 @@ public class ScheduleManager {
 
     /**
      * Whether blocking is currently called for by the schedule alone (ignoring any active
-     * grace period). If no schedule has ever been pushed, this is always true — that
-     * preserves the fail-locked window between provisioning and the first schedule push.
-     * Used both by shouldEnforceNow() and by the UI to decide when a grace-period "unlock"
-     * button is relevant to offer.
+     * grace period). With no schedule enabled, there is nothing to enforce, so this is
+     * false. Used both by shouldEnforceNow() and by the UI to decide when a grace-period
+     * "unlock" button is relevant to offer.
      */
     public static boolean isBlockingScheduled(Context context) {
-        return !isScheduleEnabled(context) || isCurrentlyLocked(context);
+        return isScheduleEnabled(context) && isCurrentlyLocked(context);
     }
 
     /**
