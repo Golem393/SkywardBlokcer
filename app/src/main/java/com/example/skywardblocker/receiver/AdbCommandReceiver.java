@@ -33,11 +33,6 @@ import com.example.skywardblocker.schedule.ScheduleManager;
  *        --ei lock_end_hour 22 --ei lock_end_minute 0 \
  *        --ei days_mask 62 --el active_from 1754179200000 --el active_until 1754784000000 \
  *        --es timezone_id "Europe/Zurich"
- *
- *   4) Finalize provisioning (seals USB debugging) — sent once the desktop installer has
- *      finished pushing config/schedule and launching the app:
- *      adb shell am broadcast -a com.example.skywardblocker.FINALIZE_SETUP \
- *        -n com.example.skywardblocker/.receiver.AdbCommandReceiver
  */
 public class AdbCommandReceiver extends BroadcastReceiver {
 
@@ -46,7 +41,6 @@ public class AdbCommandReceiver extends BroadcastReceiver {
     public static final String ACTION_CLEAR_OWNER = "com.example.skywardblocker.CLEAR_OWNER";
     public static final String ACTION_PUSH_CONFIG = "com.example.skywardblocker.PUSH_CONFIG";
     public static final String ACTION_PUSH_SCHEDULE = "com.example.skywardblocker.PUSH_SCHEDULE";
-    public static final String ACTION_FINALIZE_SETUP = "com.example.skywardblocker.FINALIZE_SETUP";
 
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -107,15 +101,6 @@ public class AdbCommandReceiver extends BroadcastReceiver {
                     daysMask, activeFrom, activeUntil, timezoneId);
             ScheduleAlarmScheduler.rescheduleAll(context);
             CategoryManager.applyEnforcement(context);
-        }
-        else if (ACTION_FINALIZE_SETUP.equals(action)) {
-            Log.i(TAG, "Received FINALIZE_SETUP broadcast — sealing USB debugging.");
-            DevicePolicyHelper helper = new DevicePolicyHelper(context);
-            if (helper.isDeviceOwner()) {
-                helper.finalizeProvisioning();
-            } else {
-                Log.w(TAG, "App is not currently Device Owner; ignoring finalize command.");
-            }
         }
     }
 }

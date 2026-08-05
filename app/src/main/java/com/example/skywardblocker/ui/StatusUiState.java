@@ -2,15 +2,10 @@ package com.example.skywardblocker.ui;
 
 /**
  * Immutable model holding all state required by the status UI screen.
- * All formatting, authentication logic, and timer calculations are evaluated in Java before creation.
+ * All formatting and state calculations are evaluated in Java before creation.
  */
 public class StatusUiState {
     private final boolean isDeviceOwner;
-    private final MaintenanceState maintenanceState;
-    private final String email;
-    private final String password;
-    private final boolean isLoginButtonEnabled;
-    private final String formattedRemainingTime;
     private final boolean scheduleEnabled;
     private final boolean scheduleCurrentlyLocked;
     private final String scheduleStatusText;
@@ -19,21 +14,12 @@ public class StatusUiState {
     private final String graceStatusText;
     private final int graceUsesRemaining;
 
-    public StatusUiState(boolean isDeviceOwner, MaintenanceState maintenanceState, String email, String password, boolean isLoginButtonEnabled, String formattedRemainingTime) {
-        this(isDeviceOwner, maintenanceState, email, password, isLoginButtonEnabled, formattedRemainingTime, false, false, "");
+    public StatusUiState(boolean isDeviceOwner) {
+        this(isDeviceOwner, false, false, "", false, false, "", 0);
     }
 
-    public StatusUiState(boolean isDeviceOwner, MaintenanceState maintenanceState, String email, String password, boolean isLoginButtonEnabled, String formattedRemainingTime, boolean scheduleEnabled, boolean scheduleCurrentlyLocked, String scheduleStatusText) {
-        this(isDeviceOwner, maintenanceState, email, password, isLoginButtonEnabled, formattedRemainingTime, scheduleEnabled, scheduleCurrentlyLocked, scheduleStatusText, false, false, "", 0);
-    }
-
-    public StatusUiState(boolean isDeviceOwner, MaintenanceState maintenanceState, String email, String password, boolean isLoginButtonEnabled, String formattedRemainingTime, boolean scheduleEnabled, boolean scheduleCurrentlyLocked, String scheduleStatusText, boolean blockingScheduled, boolean graceActive, String graceStatusText, int graceUsesRemaining) {
+    public StatusUiState(boolean isDeviceOwner, boolean scheduleEnabled, boolean scheduleCurrentlyLocked, String scheduleStatusText, boolean blockingScheduled, boolean graceActive, String graceStatusText, int graceUsesRemaining) {
         this.isDeviceOwner = isDeviceOwner;
-        this.maintenanceState = maintenanceState;
-        this.email = email != null ? email : "";
-        this.password = password != null ? password : "";
-        this.isLoginButtonEnabled = isLoginButtonEnabled;
-        this.formattedRemainingTime = formattedRemainingTime != null ? formattedRemainingTime : "10:00 remaining";
         this.scheduleEnabled = scheduleEnabled;
         this.scheduleCurrentlyLocked = scheduleCurrentlyLocked;
         this.scheduleStatusText = scheduleStatusText != null ? scheduleStatusText : "";
@@ -45,26 +31,6 @@ public class StatusUiState {
 
     public boolean isDeviceOwner() {
         return isDeviceOwner;
-    }
-
-    public MaintenanceState getMaintenanceState() {
-        return maintenanceState;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public boolean isLoginButtonEnabled() {
-        return isLoginButtonEnabled;
-    }
-
-    public String getFormattedRemainingTime() {
-        return formattedRemainingTime;
     }
 
     public boolean isScheduleEnabled() {
@@ -95,15 +61,11 @@ public class StatusUiState {
         return graceUsesRemaining;
     }
 
-    public StatusUiState copy(MaintenanceState newMaintenanceState, String newEmail, String newPassword, boolean newIsLoginButtonEnabled, String newFormattedRemainingTime) {
-        return new StatusUiState(this.isDeviceOwner, newMaintenanceState, newEmail, newPassword, newIsLoginButtonEnabled, newFormattedRemainingTime, this.scheduleEnabled, this.scheduleCurrentlyLocked, this.scheduleStatusText, this.blockingScheduled, this.graceActive, this.graceStatusText, this.graceUsesRemaining);
-    }
-
     public StatusUiState withSchedule(boolean newScheduleEnabled, boolean newScheduleCurrentlyLocked, String newScheduleStatusText) {
-        return new StatusUiState(this.isDeviceOwner, this.maintenanceState, this.email, this.password, this.isLoginButtonEnabled, this.formattedRemainingTime, newScheduleEnabled, newScheduleCurrentlyLocked, newScheduleStatusText, this.blockingScheduled, this.graceActive, this.graceStatusText, this.graceUsesRemaining);
+        return new StatusUiState(this.isDeviceOwner, newScheduleEnabled, newScheduleCurrentlyLocked, newScheduleStatusText, this.blockingScheduled, this.graceActive, this.graceStatusText, this.graceUsesRemaining);
     }
 
     public StatusUiState withGrace(boolean newBlockingScheduled, boolean newGraceActive, String newGraceStatusText, int newGraceUsesRemaining) {
-        return new StatusUiState(this.isDeviceOwner, this.maintenanceState, this.email, this.password, this.isLoginButtonEnabled, this.formattedRemainingTime, this.scheduleEnabled, this.scheduleCurrentlyLocked, this.scheduleStatusText, newBlockingScheduled, newGraceActive, newGraceStatusText, newGraceUsesRemaining);
+        return new StatusUiState(this.isDeviceOwner, this.scheduleEnabled, this.scheduleCurrentlyLocked, this.scheduleStatusText, newBlockingScheduled, newGraceActive, newGraceStatusText, newGraceUsesRemaining);
     }
 }

@@ -197,46 +197,4 @@ public class ApiClient {
         }).start();
     }
 
-    public static void authenticateSetup(Context context, String email, String password, ApiCallback<Boolean> callback) {
-        new Thread(() -> {
-            try {
-                JSONObject json = new JSONObject();
-                json.put("email", email);
-                json.put("password", password);
-
-                // Call doRequest with allowRetries = false
-                String response = doRequest(context, "POST", "/setup-auth", json.toString(), false);
-                
-                JSONObject root = new JSONObject(response);
-                boolean success = root.optBoolean("success", false);
-
-                if (success) {
-                    callback.onSuccess(true);
-                } else {
-                    String error = root.optString("errorMessage", "Authentication failed");
-                    callback.onError(error);
-                }
-            } catch (Exception e) {
-                Log.e(TAG, "authenticateSetup failed", e);
-                String msg = e.getMessage();
-                
-                if (msg != null && (msg.contains("Request failed after") || msg.contains("ConnectException") || msg.contains("UnknownHostException") || msg.contains("SocketTimeoutException"))) {
-                    msg = "Connection error. Please ensure you are connected to WiFi or mobile data and try again.";
-                } else {
-                    // If it's an HTTP error from doRequest, it might contain a JSON body with the error message
-                    try {
-                        if (msg != null && msg.contains("{")) {
-                            String jsonPart = msg.substring(msg.indexOf("{"));
-                            JSONObject errorJson = new JSONObject(jsonPart);
-                            if (errorJson.has("errorMessage")) {
-                                msg = errorJson.getString("errorMessage");
-                            }
-                        }
-                    } catch (Exception ignored) {}
-                }
-                
-                callback.onError(msg != null ? msg : "Unknown error");
-            }
-        }).start();
-    }
 }

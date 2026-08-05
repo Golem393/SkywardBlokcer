@@ -25,11 +25,6 @@ public class DevicePolicyHelper {
 
     private static final String TAG = "SkywardDebug";
 
-    // ── Developer / Test Flag ─────────────────────────────────────────
-    // Set to TRUE during development & testing so USB debugging (ADB) remains enabled.
-    // Set to FALSE for production releases so users cannot bypass protection via terminal commands.
-    public static final boolean ALLOW_USB_DEBUGGING = false;
-
     private final Context context;
     private final DevicePolicyManager dpm;
     private final ComponentName adminComponent;
@@ -143,13 +138,6 @@ public class DevicePolicyHelper {
     }
 
     /**
-     * Blocks the user from enabling/disabling USB debugging.
-     */
-    public void setDebuggingDisabled(boolean disabled) {
-        setUserRestriction(UserManager.DISALLOW_DEBUGGING_FEATURES, disabled);
-    }
-
-    /**
      * Blocks the user from manually changing date, time, or timezone (Settings > Date & Time
      * becomes non-editable). Enabling this also forces automatic date/time and automatic
      * timezone to stay on, so the schedule feature's boundary checks can trust
@@ -157,18 +145,6 @@ public class DevicePolicyHelper {
      */
     public void setDateTimeConfigDisabled(boolean disabled) {
         setUserRestriction(UserManager.DISALLOW_CONFIG_DATE_TIME, disabled);
-    }
-
-    /**
-     * Toggles USB debugging restrictions for temporary maintenance mode.
-     * Uses boxed Boolean to support method reference matching for Consumer<Boolean>.
-     *
-     * @param enabled If true, temporarily removes debugging restriction. If false, enforces debugging restriction.
-     */
-    public void setTemporaryDebugging(Boolean enabled) {
-        boolean allowDebugging = enabled != null && enabled;
-        setUserRestriction(UserManager.DISALLOW_DEBUGGING_FEATURES, !allowDebugging);
-        Log.i(TAG, "Temporary debugging state changed: enabled=" + allowDebugging);
     }
 
     private void setUserRestriction(String restriction, boolean add) {
@@ -194,9 +170,8 @@ public class DevicePolicyHelper {
      * Makes Skyward itself uninstallable and blocks tampering.
      * Call this after Device Owner is confirmed active.
      *
-     * Deliberately does NOT touch USB debugging — the desktop installer still needs ADB
-     * to push config/schedule and launch the app right after Device Owner is set. Call
-     * finalizeProvisioning() once that's done to seal USB debugging.
+     * Deliberately does NOT touch USB debugging — it is left enabled at all times so the
+     * desktop companion app can always reach the device over ADB.
      */
     public void lockdownSkyward() {
         if (!isDeviceOwner()) {
@@ -216,26 +191,7 @@ public class DevicePolicyHelper {
         // Prevent manual clock/timezone tampering (schedule anti-bypass)
         setDateTimeConfigDisabled(true);
 
-        Log.d(TAG, "lockdownSkyward: protections applied (USB debugging left as-is until finalizeProvisioning())");
-    }
-
-    /**
-     * Seals USB debugging once the desktop installer has finished pushing config/schedule
-     * and launching the app. Called via the ADB FINALIZE_SETUP broadcast — the last thing
-     * the installer does before disconnecting, since it can't reach the device over ADB
-     * anymore afterward (by design, same as any other production lockdown).
-     */
-    public void finalizeProvisioning() {
-        if (!isDeviceOwner()) {
-            Log.w(TAG, "finalizeProvisioning: not Device Owner, skipping");
-            return;
-        }
-        if (!ALLOW_USB_DEBUGGING) {
-            setDebuggingDisabled(true);
-            Log.i(TAG, "finalizeProvisioning: USB debugging locked down");
-        } else {
-            Log.i(TAG, "finalizeProvisioning: ALLOW_USB_DEBUGGING is true — keeping USB debugging open for developer testing!");
-        }
+        Log.d(TAG, "lockdownSkyward: protections applied (USB debugging left enabled)");
     }
 
     /**
@@ -246,7 +202,6 @@ public class DevicePolicyHelper {
 
         setUninstallBlocked(context.getPackageName(), false);
         setFactoryResetDisabled(false);
-        setDebuggingDisabled(false);
         setSafeModeDisabled(false);
         setDateTimeConfigDisabled(false);
 
