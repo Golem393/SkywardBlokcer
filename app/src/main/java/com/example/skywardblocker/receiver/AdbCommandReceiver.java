@@ -21,7 +21,7 @@ import com.example.skywardblocker.schedule.ScheduleManager;
  *   2) Push Configuration from desktop companion app:
  *      adb shell am broadcast -a com.example.skywardblocker.PUSH_CONFIG \
  *        -n com.example.skywardblocker/.receiver.AdbCommandReceiver \
- *        --es base_url "https://..." --es api_key "api_..." --es dns_hostname "..."
+ *        --es base_url "https://..." --es api_key "api_..."
  *
  *   3) Push a locked-hours schedule from desktop companion app. days_mask is a weekday
  *      bitmask (bit 0 = Sunday … bit 6 = Saturday) and active_from/active_until bound the
@@ -64,18 +64,13 @@ public class AdbCommandReceiver extends BroadcastReceiver {
         else if (ACTION_PUSH_CONFIG.equals(action)) {
             String baseUrl = intent.getStringExtra("base_url");
             String apiKey = intent.getStringExtra("api_key");
-            String dnsHostname = intent.getStringExtra("dns_hostname");
 
-            Log.i(TAG, "Received PUSH_CONFIG broadcast. base_url=" + baseUrl + ", dns=" + dnsHostname);
-            ApiClient.saveConfig(context, baseUrl, apiKey, dnsHostname);
+            Log.i(TAG, "Received PUSH_CONFIG broadcast. base_url=" + baseUrl);
+            ApiClient.saveConfig(context, baseUrl, apiKey);
 
-            // If Device Owner is active, apply full protection, Private DNS, and background service immediately!
+            // If Device Owner is active, apply full protection and background service immediately!
             DevicePolicyHelper helper = new DevicePolicyHelper(context);
             if (helper.isDeviceOwner()) {
-                if (dnsHostname != null && !dnsHostname.trim().isEmpty()) {
-                    helper.setPrivateDns(dnsHostname);
-                    Log.i(TAG, "Applied new Private DNS immediately upon config push!");
-                }
                 helper.lockdownSkyward();
                 CategoryManager.initializeCache(context);
                 AppMonitorService.start(context);

@@ -18,7 +18,6 @@ import com.example.skywardblocker.blocking.CategoryManager;
  * Provides system-level controls:
  *   - Suspend/hide apps (prevents launching blocked categories)
  *   - Block uninstallation (prevents removal of Skyward or protected apps)
- *   - Configure Private DNS (enforces content-filtering DNS)
  *   - Set user restrictions (prevent settings tampering)
  */
 public class DevicePolicyHelper {
@@ -82,39 +81,6 @@ public class DevicePolicyHelper {
         } catch (Exception e) {
             Log.e(TAG, "setUninstallBlocked failed for " + packageName, e);
         }
-    }
-
-    // ── DNS configuration ─────────────────────────────────────────────
-
-    /**
-     * Configures Private DNS via Device Owner policy.
-     *
-     * @param hostname The DNS hostname (e.g., "dns.example.com"), or null to use auto mode
-     */
-    public boolean setPrivateDns(String hostname) {
-        if (!isDeviceOwner()) {
-            Log.w(TAG, "setPrivateDns: not Device Owner, skipping");
-            return false;
-        }
-        // Run DNS configuration on a background thread to avoid NetworkOnMainThreadException on Android 10+
-        new Thread(() -> {
-            try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    if (hostname != null && !hostname.isEmpty()) {
-                        int result = dpm.setGlobalPrivateDnsModeSpecifiedHost(adminComponent, hostname);
-                        Log.d(TAG, "setPrivateDns(" + hostname + ") result: " + result);
-                    } else {
-                        dpm.setGlobalPrivateDnsModeOpportunistic(adminComponent);
-                        Log.d(TAG, "setPrivateDns: set to opportunistic mode");
-                    }
-                } else {
-                    Log.w(TAG, "setPrivateDns: requires API 29+, current: " + Build.VERSION.SDK_INT);
-                }
-            } catch (Exception e) {
-                Log.e(TAG, "setPrivateDns failed", e);
-            }
-        }).start();
-        return true;
     }
 
     // ── User restrictions (prevent settings tampering) ────────────────
@@ -221,18 +187,10 @@ public class DevicePolicyHelper {
         // 2. Un-suspend all installed apps so they become accessible again
         CategoryManager.unblockAllApps(context);
 
-        // 3. Revert Private DNS to opportunistic (automatic) mode synchronously
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            try {
-                dpm.setGlobalPrivateDnsModeOpportunistic(adminComponent);
-                Log.d(TAG, "clearDeviceOwner: DNS reset to opportunistic mode");
-            } catch (Exception ignored) {}
-        }
-
-        // 4. Remove Skyward self-protections & user restrictions
+        // 3. Remove Skyward self-protections & user restrictions
         unlockSkyward();
 
-        // 5. Relinquish Device Owner privileges
+        // 4. Relinquish Device Owner privileges
         try {
             dpm.clearDeviceOwnerApp(context.getPackageName());
             Log.d(TAG, "clearDeviceOwner: Device Owner status removed");

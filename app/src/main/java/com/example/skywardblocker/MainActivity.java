@@ -6,7 +6,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.compose.ui.platform.ComposeView;
 
 import com.example.skywardblocker.admin.DevicePolicyHelper;
-import com.example.skywardblocker.api.ApiClient;
 import com.example.skywardblocker.blocking.AppMonitorService;
 import com.example.skywardblocker.blocking.CategoryManager;
 import com.example.skywardblocker.ui.ComposeBridge;
@@ -15,7 +14,7 @@ import com.example.skywardblocker.ui.StatusController;
 /**
  * Minimal status activity for SkywardBlocker.
  *
- * All setup (Device Owner, DNS, auth) is handled by the desktop installer via ADB.
+ * All setup (Device Owner, auth) is handled by the desktop installer via ADB.
  * This activity just shows the current status and triggers the initial app scan.
  */
 public class MainActivity extends AppCompatActivity {
@@ -34,14 +33,8 @@ public class MainActivity extends AppCompatActivity {
 
         // Auto-configure if Device Owner (idempotent)
         if (dph.isDeviceOwner()) {
-            Log.d(TAG, "Device Owner active — applying lockdown + DNS + Monitor Service");
+            Log.d(TAG, "Device Owner active — applying lockdown + Monitor Service");
             dph.lockdownSkyward();
-            String dnsHostname = ApiClient.getDnsHostname(this);
-            if (dnsHostname != null && !dnsHostname.trim().isEmpty()) {
-                dph.setPrivateDns(dnsHostname);
-            } else {
-                Log.w(TAG, "DNS hostname not yet pushed; skipping setPrivateDns.");
-            }
 
             // Initialize category cache, suspend blocked apps, and start protection service
             CategoryManager.initializeCache(this);

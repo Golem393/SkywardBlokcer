@@ -25,7 +25,6 @@ public class ApiClient {
 
     private static final String KEY_BASE_URL = "base_url";
     private static final String KEY_API_KEY = "api_key";
-    private static final String KEY_DNS_HOSTNAME = "dns_hostname";
 
     // ── Config Getters & Setters (No Hardcoded Fallbacks!) ─────────────────
 
@@ -39,16 +38,10 @@ public class ApiClient {
         return prefs.getString(KEY_API_KEY, null);
     }
 
-    public static String getDnsHostname(Context context) {
-        SharedPreferences prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
-        return prefs.getString(KEY_DNS_HOSTNAME, null);
-    }
-
-    public static void saveConfig(Context context, String baseUrl, String apiKey, String dnsHostname) {
+    public static void saveConfig(Context context, String baseUrl, String apiKey) {
         SharedPreferences.Editor editor = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE).edit();
         if (baseUrl != null) editor.putString(KEY_BASE_URL, baseUrl);
         if (apiKey != null) editor.putString(KEY_API_KEY, apiKey);
-        if (dnsHostname != null) editor.putString(KEY_DNS_HOSTNAME, dnsHostname);
         editor.apply();
         Log.i(TAG, "Saved pushed configuration to SharedPreferences!");
     }

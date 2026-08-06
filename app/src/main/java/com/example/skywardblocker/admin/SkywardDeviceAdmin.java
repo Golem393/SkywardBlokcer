@@ -6,7 +6,6 @@ import android.content.Intent;
 import android.util.Log;
 import androidx.annotation.NonNull;
 
-import com.example.skywardblocker.api.ApiClient;
 import com.example.skywardblocker.blocking.AppMonitorService;
 import com.example.skywardblocker.blocking.CategoryManager;
 
@@ -16,7 +15,7 @@ import com.example.skywardblocker.blocking.CategoryManager;
  * When this app is set as Device Owner via ADB:
  *   adb shell dpm set-device-owner com.example.skywardblocker/.admin.SkywardDeviceAdmin
  *
- * ...it automatically initializes lockdown protections, Private DNS, and background
+ * ...it automatically initializes lockdown protections and background
  * monitoring immediately upon being enabled!
  */
 public class SkywardDeviceAdmin extends DeviceAdminReceiver {
@@ -31,12 +30,6 @@ public class SkywardDeviceAdmin extends DeviceAdminReceiver {
         DevicePolicyHelper dph = new DevicePolicyHelper(context);
         if (dph.isDeviceOwner()) {
             dph.lockdownSkyward();
-            String dnsHostname = ApiClient.getDnsHostname(context);
-            if (dnsHostname != null && !dnsHostname.trim().isEmpty()) {
-                dph.setPrivateDns(dnsHostname);
-            } else {
-                Log.w(TAG, "DNS hostname not yet pushed; skipping setPrivateDns in SkywardDeviceAdmin.");
-            }
             CategoryManager.initializeCache(context);
             AppMonitorService.start(context);
         }
